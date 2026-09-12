@@ -1,7 +1,7 @@
-// service worker «Эмоциональная планета» — версия по содержимому: 6f207a120c
+// service worker «Эмоциональная планета» — версия по содержимому: 3d4af89094
 // Игра всегда отдаётся МГНОВЕННО из памяти телефона (и работает без интернета).
 // Новая версия скачивается фоном при следующем заходе и применяется сама.
-const CACHE = 'emoplanet-6f207a120c';
+const CACHE = 'emoplanet-3d4af89094';
 const ASSETS = ['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-512-maskable.png','./apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

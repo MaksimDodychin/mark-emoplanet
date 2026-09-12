@@ -113,7 +113,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "6f207a120c";</script>
+  <script>window.__APP_VER = "3d4af89094";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -126,6 +126,7 @@
   <div class="card" id="sparks">🔥 0 / 8</div>
   <div class="card" id="bagBtn">🎒 Рюкзак</div>
   <div class="card" id="mapBtn" style="right:12px;top:92px;pointer-events:auto;cursor:pointer">🗺 Карта</div>
+  <div class="card" id="inHand" style="left:12px;top:92px;display:none">🖐 В руках: —</div>
   <div id="moodWrap">
     <div id="moodName">злость</div>
     <div id="moodTrack"><div id="moodFill"></div></div>
@@ -204,6 +205,15 @@ renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fd3ff);
+/* 🌤 КУПОЛ НЕБА с градиентом: горизонт светлее зенита — небо перестаёт быть «плоской заливкой» */
+const небоМат = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: { верх:{ value:new THREE.Color(0x2f7fd0) }, низ:{ value:new THREE.Color(0xbfe6ff) } },
+  vertexShader: 'varying float h; void main(){ h = normalize(position).y;     gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'varying float h; uniform vec3 верх; uniform vec3 низ;     void main(){ gl_FragColor = vec4(mix(низ, верх, clamp(h*1.2+0.15,0.0,1.0)), 1.0); }',
+});
+const небо = new THREE.Mesh(new THREE.SphereGeometry(280, 24, 16), небоМат); scene.add(небо);
+function небоЦвета(низ, верх) { небоМат.uniforms.низ.value.setHex(низ); небоМат.uniforms.верх.value.setHex(верх); }
 scene.fog = new THREE.Fog(0x8fd3ff, 60, 190);
 const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 400);
 addEventListener('resize', () => {
@@ -266,6 +276,32 @@ function камень(x, z, r = 0.9) {
   m.castShadow = m.receiveShadow = true; world.add(m);
   return m;
 }
+/* ── 🌼 цветок: стебель и лепестки кружком ── */
+function цветок(x, z) {
+  const g = new THREE.Group();
+  const цв = [0xff6b8a, 0xffd24a, 0xc084fc, 0xffffff][ri(0,3)];
+  const ст = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.42, 5),
+    new THREE.MeshStandardMaterial({ color:0x4f9a3a, roughness:1 }));
+  ст.position.y = 0.21; g.add(ст);
+  const лМ = new THREE.MeshStandardMaterial({ color:цв, roughness:0.8 });
+  for (let i = 0; i < 5; i++) { const a = i/5*6.28;
+    const л = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), лМ);
+    л.scale.set(1, 0.4, 1); л.position.set(Math.cos(a)*0.11, 0.44, Math.sin(a)*0.11); g.add(л); }
+  const с = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+    new THREE.MeshStandardMaterial({ color:0xffe08a, roughness:0.6 }));
+  с.position.y = 0.46; g.add(с);
+  g.position.set(x, 0, z); g.rotation.y = rnd(0, 6.3); world.add(g); return g;
+}
+/* ── ☁️ облако из нескольких шаров ── */
+function облако(x, y, z, k) {
+  const g = new THREE.Group();
+  const м = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:1, transparent:true, opacity:0.92 });
+  for (const [dx, dy, dz, r] of [[0,0,0,2.4],[2.2,-0.3,0.4,1.7],[-2.1,-0.2,-0.3,1.9],[0.8,0.7,-0.6,1.5]]) {
+    const ш = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), м);
+    ш.position.set(dx, dy, dz); g.add(ш);
+  }
+  g.position.set(x, y, z); g.scale.setScalar(k || 1); world.add(g); return g;
+}
 /* ── 🌿 кустик травы ── */
 function травинки(x, z) {
   const g = new THREE.Group();
@@ -282,11 +318,11 @@ function травинки(x, z) {
    «в миры можно бегать по мостам»).
    ═══════════════════════════════════════════════════════════════════ */
 const ОСТРОВА = {
-  garmony: { имя:'💛 Остров Гармонии', x:0,   z:0,   r:26, цвет:0x63b34a, небо:0x8fd3ff },
-  strah:   { имя:'🕸 Лабиринт страхов', x:0,   z:-78, r:30, цвет:0x4a4a5e, небо:0x2a2436 },
-  radost:  { имя:'🏖 Пляж радости',     x:74,  z:0,   r:26, цвет:0xe8d39a, небо:0xffd9a0 },
-  pechal:  { имя:'🌊 Река печали',      x:-74, z:0,   r:26, цвет:0x5d7a8c, небо:0x8a9db0 },
-  zloba:   { имя:'🌋 Вулкан злобы',     x:0,   z:78,  r:28, цвет:0x6b3a2a, небо:0xff8a5a },
+  garmony: { имя:'💛 Остров Гармонии', x:0,   z:0,   r:26, цвет:0x63b34a, небо:0xbfe6ff, небоВерх:0x2f7fd0 },
+  strah:   { имя:'🕸 Лабиринт страхов', x:0,   z:-78, r:30, цвет:0x4a4a5e, небо:0x3a3250, небоВерх:0x120c20 },
+  radost:  { имя:'🏖 Пляж радости',     x:74,  z:0,   r:26, цвет:0xe8d39a, небо:0xffe6b8, небоВерх:0xf2a63a },
+  pechal:  { имя:'🌊 Река печали',      x:-74, z:0,   r:26, цвет:0x5d7a8c, небо:0xaebcc8, небоВерх:0x4a6070 },
+  zloba:   { имя:'🌋 Вулкан злобы',     x:0,   z:78,  r:28, цвет:0x6b3a2a, небо:0xffb08a, небоВерх:0x8a2a12 },
 };
 let островТут = 'garmony';
 
@@ -300,6 +336,10 @@ function дискОстрова(o) {
   const верх = new THREE.Mesh(new THREE.CylinderGeometry(o.r, o.r*0.94, 1.2, 44),
     new THREE.MeshStandardMaterial({ color:o.цвет, roughness:0.95 }));
   верх.position.set(o.x, -0.6, o.z); верх.receiveShadow = true; world.add(верх);
+  // 🏝 песчаный кант по кромке — остров перестаёт быть «зелёной таблеткой»
+  const кант = new THREE.Mesh(new THREE.TorusGeometry(o.r - 0.6, 1.0, 8, 48), M.песок);
+  кант.rotation.x = Math.PI/2; кант.position.set(o.x, -0.45, o.z);
+  кант.receiveShadow = true; world.add(кант);
   const низ = new THREE.Mesh(new THREE.ConeGeometry(o.r*0.94, 9, 34),
     new THREE.MeshStandardMaterial({ color:0x6a4a30, roughness:1 }));
   низ.position.set(o.x, -5.7, o.z); низ.rotation.x = Math.PI; world.add(низ);
@@ -334,6 +374,21 @@ function мост(от, до, открыт) {
       new THREE.MeshStandardMaterial({ color:0xd9c08a, roughness:0.9 }));
     кан.castShadow = true; g.add(кан);
   }
+  // 🚪 ворота-арки по краям моста: издалека видно, где вход (жалоба Марка «не попасть в лабиринт»)
+  for (const конец of [0, 1]) {
+    const t = конец ? len : 0;
+    for (const s2 of [-1, 1]) {
+      const ст = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 3.4, 10),
+        new THREE.MeshStandardMaterial({ color:0x8a5a34, roughness:0.85 }));
+      ст.position.set(ux*t - uz*s2*1.6, 1.7, uz*t + ux*s2*1.6); ст.castShadow = true; g.add(ст);
+    }
+    const пер = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 0.45),
+      new THREE.MeshStandardMaterial({ color:0x8a5a34, roughness:0.85 }));
+    пер.position.set(ux*t, 3.4, uz*t); пер.rotation.y = Math.atan2(ux, uz) + Math.PI/2; g.add(пер);
+    const ф = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), светящийся(0xffe08a, 2.2));
+    ф.position.set(ux*t, 3.7, uz*t); g.add(ф);
+    const L = new THREE.PointLight(0xffe08a, 6, 16); L.position.set(ux*t, 3.6, uz*t); g.add(L);
+  }
   g.position.set(x0, 0, z0); world.add(g);
   const м = { от, до, x0, z0, ux, uz, len, mesh:g, открыт:!!открыт };
   g.visible = м.открыт; мосты.push(м); return м;
@@ -343,12 +398,23 @@ function мост(от, до, открыт) {
 let маяк = null, пылесосВСарае = null;
 function построитьГармонию() {
   const o = ОСТРОВА.garmony; дискОстрова(o);
-  for (let i = 0; i < 16; i++) { const a = rnd(0,6.3), r = rnd(8, o.r-3);
-    дерево(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r, rnd(4.5, 7)); }
+  const свободно = (x, z) => Math.hypot(x, z-10) > 5 &&          // место старта
+                             !(Math.abs(x) < 4.5 && z < 0) &&     // 🌉 дорожка к мосту в лабиринт
+                             !(Math.abs(z) < 4.5 && x > 0) && !(Math.abs(z) < 4.5 && x < 0) &&
+                             !(Math.abs(x) < 4.5 && z > 0) &&
+                             Math.hypot(x, z) > 4 &&              // площадка у маяка
+                             Math.hypot(x+9, z-7) > 4;            // сарай
+  for (let i = 0; i < 20; i++) { const a = rnd(0,6.3), r = rnd(8, o.r-3);
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    if (свободно(x, z)) дерево(x, z, rnd(4.5, 7)); }
   for (let i = 0; i < 22; i++) { const a = rnd(0,6.3), r = rnd(5, o.r-2);
     травинки(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r); }
-  for (let i = 0; i < 7; i++) { const a = rnd(0,6.3), r = rnd(7, o.r-4);
-    камень(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r, rnd(0.6, 1.3)); }
+  for (let i = 0; i < 9; i++) { const a = rnd(0,6.3), r = rnd(7, o.r-4);
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    if (свободно(x, z)) камень(x, z, rnd(0.6, 1.3)); }
+  for (let i = 0; i < 40; i++) { const a = rnd(0,6.3), r = rnd(4, o.r-3);
+    цветок(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r); }
+  for (let i = 0; i < 9; i++) облако(rnd(-90, 90), rnd(26, 40), rnd(-90, 90), rnd(0.8, 1.7));
   // 🔆 МАЯК НАСТРОЕНИЯ: восемь колец-огоньков, по одному на эмоцию
   const g = new THREE.Group();
   const баш = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.9, 9, 18),
@@ -455,6 +521,8 @@ function человечек() {
   return { g, ноги, руки, рот, глаза };
 }
 const герой = человечек(); world.add(герой.g);
+/* 🖐 ПРЕДМЕТ В РУКАХ (просьба Марка): его видно и на человечке, и в HUD, и в рюкзаке. */
+let вРуках = null, мешВРуках = null;
 const player = { x:6, z:10, y:0, vy:0, наЗемле:true, h:Math.PI, скор:0, бежит:false };
 // 🔥 огонёк-настроение рядом с человечком
 const огонёк = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), светящийся(0xffe08a, 2.2));
@@ -468,12 +536,35 @@ const тень = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5),
   new THREE.MeshBasicMaterial({ map:тенеТекс, transparent:true, depthWrite:false }));
 тень.rotation.x = -Math.PI/2; world.add(тень);
 
+function взятьВРуки(предмет) {
+  вРуках = предмет;
+  if (мешВРуках) { герой.g.remove(мешВРуках); мешВРуках = null; }
+  if (предмет && предмет.имя === 'СТРАХОЛОВ') {
+    const м = страхолов(0, 0);                     // та же модель, только маленькая и в руке
+    world.remove(м.g); м.g.scale.setScalar(0.52);
+    м.g.position.set(0.42, 0.72, 0.16); м.g.rotation.y = -0.5;
+    герой.g.add(м.g); мешВРуках = м.g;
+  }
+  const c = $('inHand');
+  if (предмет) { c.style.display = 'block'; c.textContent = '🖐 В руках: ' + предмет.em + ' ' + предмет.имя; }
+  else c.style.display = 'none';
+}
+
 /* ── камера из-за спины ── */
 let yaw = 0, pitch = 0.12;
+const лучКамеры = new THREE.Raycaster();
 function камера(dt, мгновенно) {
-  const d = 8.2, h = 4.2;
+  let d = 8.2; const h = 4.2;
+  // ⚠️ камера залезала внутрь кроны дерева — пускаем луч от героя назад и подтягиваем ближе
+  const от = new THREE.Vector3(player.x, player.y + 1.6, player.z);
+  const назад = new THREE.Vector3(-Math.sin(yaw), 0.32, -Math.cos(yaw)).normalize();
+  лучКамеры.set(от, назад); лучКамеры.far = d + 0.6;
+  const пересеч = лучКамеры.intersectObjects(world.children, true)
+    .filter(i => i.object !== герой.g && !герой.g.children.includes(i.object) &&
+                 i.object !== тень && i.object !== огонёк && i.distance > 0.6);
+  if (пересеч.length) d = Math.max(2.6, пересеч[0].distance - 0.7);
   const tx = player.x - Math.sin(yaw)*d, tz = player.z - Math.cos(yaw)*d;
-  const цель = new THREE.Vector3(tx, player.y + h, tz);
+  const цель = new THREE.Vector3(tx, player.y + h*(d/8.2), tz);
   if (мгновенно) camera.position.copy(цель); else camera.position.lerp(цель, 1 - Math.pow(0.002, dt));
   camera.lookAt(player.x + Math.sin(yaw)*2.5, player.y + 1.3, player.z + Math.cos(yaw)*2.5);
 }
@@ -748,6 +839,7 @@ function наОстров(id, эмоция) {
   player.x = o.x + (id === 'garmony' ? 6 : 0); player.z = o.z + (id === 'garmony' ? 10 : o.r-5);
   player.y = 0; player.vy = 0; player.неуязв = 1.2;
   scene.background.setHex(o.небо); scene.fog.color.setHex(o.небо);
+  небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);          // 🌤 градиент неба под настроение мира
   // ⚠️ правило из «Поместья»: темнота должна быть ЧИТАЕМОЙ, иначе чёрный экран
   hemi.intensity = id === 'strah' ? 0.62 : 0.85;
   sun.intensity  = id === 'strah' ? 0.55 : 1.15;
@@ -808,7 +900,8 @@ function взять() {
   if (пылесосВСарае && !пылесосВСарае.взят &&
       Math.hypot(пылесосВСарае.x-player.x, пылесосВСарае.z-player.z) < 2.6) {
     пылесосВСарае.взят = true; вихрьВзят = true; world.remove(пылесосВСарае.g);
-    рюкзак.push({ em:'🪤', имя:'СТРАХОЛОВ', можноБросить:false });
+    const пр = { em:'🪤', имя:'СТРАХОЛОВ', можноБросить:false };
+    рюкзак.push(пр); взятьВРуки(пр);
     bigMsg('🪤 СТРАХОЛОВ У ТЕБЯ!', 2.4, '#a78bfa');
     say('Похож на пылесос, но он не для уборки: страх втягивается раструбом и садится в стеклянную банку. Справиться самому — дороже.', 10);
     return;
@@ -841,9 +934,15 @@ function показатьРюкзак() {
   if (!рюкзак.length) box.innerHTML = '<div class="slot">Пусто. Всё ещё впереди.</div>';
   рюкзак.forEach((it, i) => {
     const d = document.createElement('div'); d.className = 'slot';
-    d.innerHTML = '<span class="em">' + it.em + '</span><span>' + it.имя + '</span>';
+    const вруке = (it === вРуках);
+    d.innerHTML = '<span class="em">' + it.em + '</span><span>' + it.имя +
+      (вруке ? ' <b style="color:#ffe08a">· в руках</b>' : '') + '</span>';
+    if (!вруке) { const b2 = document.createElement('button');
+      b2.textContent = 'Взять в руки'; b2.style.background = '#7dd3fc';
+      b2.onclick = () => { взятьВРуки(it); показатьРюкзак(); }; d.appendChild(b2); }
     if (it.можноБросить !== false) { const b = document.createElement('button');
-      b.textContent = 'Положить на землю'; b.onclick = () => { рюкзак.splice(i,1); показатьРюкзак();
+      b.textContent = 'Положить на землю'; b.onclick = () => { if (it === вРуках) взятьВРуки(null);
+        рюкзак.splice(i,1); показатьРюкзак();
         счёт.отдано++; if (счёт.отдано >= 3) открытьДост('shedr');
         bigMsg('🫳 отпустил', 1.2, '#a7f3d0'); }; d.appendChild(b); }
     box.appendChild(d);
@@ -882,26 +981,40 @@ function двигать(dt) {
   // 🌉 мосты и края островов
   const o = ОСТРОВА[островТут];
   const dист = Math.hypot(nx-o.x, nz-o.z);
-  if (dист > o.r - 1.2) {
+  let наМосту = false;
+  if (dист > o.r - 1.6) {
+    // ⚠️ коридор входа был всего 1.4 м — попасть на мост было почти невозможно (жалоба Марка).
     const м = мосты.find(m2 => (m2.от === островТут || m2.до === островТут) && m2.открыт &&
-      Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) < 1.4);
+      Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) < 2.6);
     if (м) {
       const вдоль = (nx-м.x0)*м.ux + (nz-м.z0)*м.uz;
       const другой = м.от === островТут ? м.до : м.от;
-      if ((островТут !== 'garmony' && другой === 'garmony' && вдоль > 1) && !мостДомой(м)) return;
-      if (вдоль > м.len - 0.5 || вдоль < -0.5) { наОстров(другой); return; }
-      player.x = nx; player.z = nz; player.наЗемле = true; player.y = -Math.sin(clamp(вдоль/м.len,0,1)*Math.PI)*1.5;
-      return;
+      const кДому = другой === 'garmony' && островТут !== 'garmony';
+      const доКонца = островТут === м.от ? (вдоль > м.len - 1.2) : (вдоль < 1.2);
+      if (доКонца) {
+        if (кДому && !мостДомой(м)) { player.x = player.x; player.z = player.z; }
+        else наОстров(другой);
+        нарисоватьГероя(dt); return;
+      }
+      player.x = nx; player.z = nz; player.наЗемле = true;
+      player.y = -Math.sin(clamp(вдоль/м.len, 0, 1)*Math.PI)*1.5;
+      наМосту = true;
+    } else {
+      const k = (o.r - 1.6) / (dист || 1);
+      nx = o.x + (nx-o.x)*k; nz = o.z + (nz-o.z)*k;
     }
-    const k = (o.r - 1.2) / (dист || 1);
-    nx = o.x + (nx-o.x)*k; nz = o.z + (nz-o.z)*k;
   }
-  player.x = nx; player.z = nz;
-  // прыжок и земля
-  player.vy -= ГРАВ*dt; player.y += player.vy*dt;
-  if (player.y <= 0) { player.y = 0; player.vy = 0; player.наЗемле = true; }
+  if (!наМосту) {
+    player.x = nx; player.z = nz;
+    player.vy -= ГРАВ*dt; player.y += player.vy*dt;
+    if (player.y <= 0) { player.y = 0; player.vy = 0; player.наЗемле = true; }
+  }
   if (player.неуязв > 0) player.неуязв -= dt;
-  // рисуем героя
+  нарисоватьГероя(dt);
+}
+// ⚠️ рисование героя вынесено отдельно: раньше на мосту функция выходила раньше,
+//    и модель человечка оставалась стоять на берегу, пока камера уезжала.
+function нарисоватьГероя(dt) {
   герой.g.position.set(player.x, player.y, player.z);
   герой.g.rotation.y = player.h;
   const ш = Math.sin(time*10) * Math.min(1, player.скор/5);
@@ -1207,6 +1320,7 @@ window.__dbg = {
   get sparks(){ return огоньки; },
   get mood(){ return { вид:настроение.вид, сила:+настроение.сила.toFixed(2) }; },
   get bag(){ return рюкзак.map(i => i.имя); },
+  get hand(){ return вРуках ? вРуках.имя : null; },
   start(){ $('playBtn').click(); return state; },
   go(id){ наОстров(id); return островТут; },
   tp(x, z){ player.x = x; player.z = z; return this.pos; },
