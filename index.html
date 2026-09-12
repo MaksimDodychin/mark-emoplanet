@@ -113,7 +113,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "3d4af89094";</script>
+  <script>window.__APP_VER = "c2f5148134";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -127,6 +127,7 @@
   <div class="card" id="bagBtn">🎒 Рюкзак</div>
   <div class="card" id="mapBtn" style="right:12px;top:92px;pointer-events:auto;cursor:pointer">🗺 Карта</div>
   <div class="card" id="inHand" style="left:12px;top:92px;display:none">🖐 В руках: —</div>
+  <div class="card" id="camBtn" style="right:12px;top:132px;pointer-events:auto;cursor:pointer">📷 Камера: обычная</div>
   <div id="moodWrap">
     <div id="moodName">злость</div>
     <div id="moodTrack"><div id="moodFill"></div></div>
@@ -487,38 +488,88 @@ function страхолов(x, z) {
    🧍 ГЕРОЙ — живой человечек (решение Марка). Круглые формы, шагающие ноги,
    рядом летит огонёк-настроение и красит его в цвет острова.
    ═══════════════════════════════════════════════════════════════════ */
+/* 🧍 ЧЕЛОВЕЧЕК. Собран из круглых частей: суставы-шарниры (чтобы руки и ноги
+   гнулись, а не «болтались брёвнами»), лицо с бровями и носом, причёска, рюкзак,
+   воротник и манжеты. Никаких коробок, кроме подошв. */
 function человечек() {
   const g = new THREE.Group();
-  const кожа = new THREE.MeshStandardMaterial({ color:0xffd2a6, roughness:0.65 });
-  const куртка = new THREE.MeshStandardMaterial({ color:0x2f6fbf, roughness:0.7 });
-  const штаны = new THREE.MeshStandardMaterial({ color:0x374151, roughness:0.85 });
-  const обувь = new THREE.MeshStandardMaterial({ color:0x1f2430, roughness:0.7 });
-  const тело = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 6, 14), куртка);
-  тело.position.y = 1.05; g.add(тело);
-  const голова = new THREE.Mesh(new THREE.SphereGeometry(0.29, 20, 16), кожа);
-  голова.position.y = 1.66; g.add(голова);
-  const чуб = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 12, 0, 6.3, 0, 1.1),
-    new THREE.MeshStandardMaterial({ color:0x4a3020, roughness:0.9 }));
-  чуб.position.y = 1.7; g.add(чуб);
-  const глазМ = new THREE.MeshStandardMaterial({ color:0x141018, roughness:0.2 });
-  const глаза = [];
-  for (const sx of [-1, 1]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), глазМ);
-    e.position.set(sx*0.1, 1.69, 0.25); g.add(e); глаза.push(e);
+  const кожа   = new THREE.MeshStandardMaterial({ color:0xffcfa0, roughness:0.62 });
+  const куртка = new THREE.MeshStandardMaterial({ color:0x2f6fbf, roughness:0.62 });
+  const тёмн   = new THREE.MeshStandardMaterial({ color:0x1f4e8c, roughness:0.6 });
+  const штаны  = new THREE.MeshStandardMaterial({ color:0x3a4658, roughness:0.85 });
+  const обувь  = new THREE.MeshStandardMaterial({ color:0x2a2f3c, roughness:0.65 });
+  const волосы = new THREE.MeshStandardMaterial({ color:0x5a3a22, roughness:0.95 });
+  const глазБ  = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.25 });
+  const глазЧ  = new THREE.MeshStandardMaterial({ color:0x16121c, roughness:0.2 });
+
+  // ── туловище: грудь пошире, талия поуже ──
+  const грудь = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.34, 8, 18), куртка);
+  грудь.position.y = 1.16; грудь.scale.set(1.08, 1, 0.82); g.add(грудь);
+  const пояс = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.16, 16), тёмн);
+  пояс.position.y = 0.9; g.add(пояс);
+  const воротник = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.05, 8, 18), тёмн);
+  воротник.rotation.x = Math.PI/2; воротник.position.y = 1.44; g.add(воротник);
+  const шея = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.14, 12), кожа);
+  шея.position.y = 1.46; g.add(шея);
+  // 🎒 рюкзак — сразу видно, что герой в пути
+  const рюк = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.22, 6, 14),
+    new THREE.MeshStandardMaterial({ color:0x8a5a34, roughness:0.9 }));
+  рюк.position.set(0, 1.18, -0.28); рюк.scale.set(1, 1, 0.6); g.add(рюк);
+  const клапан = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.06, 6, 12),
+    new THREE.MeshStandardMaterial({ color:0x6b4526, roughness:0.9 }));
+  клапан.position.set(0, 1.3, -0.3); клапан.scale.set(1, 1, 0.6); g.add(клапан);
+
+  // ── голова, лицо ──
+  const голова = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 18), кожа);
+  голова.position.y = 1.68; голова.scale.set(1, 1.08, 0.96); g.add(голова);
+  const причёска = new THREE.Mesh(new THREE.SphereGeometry(0.285, 22, 16, 0, 6.3, 0, 1.25), волосы);
+  причёска.position.y = 1.7; причёска.scale.set(1, 1.05, 0.98); g.add(причёска);
+  const чёлка = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), волосы);
+  чёлка.position.set(0.06, 1.76, 0.2); чёлка.scale.set(1.3, 0.5, 0.7); g.add(чёлка);
+  for (const sx of [-1, 1]) {                       // ухо
+    const у = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), кожа);
+    у.position.set(sx*0.26, 1.68, 0); у.scale.set(0.5, 1, 0.8); g.add(у);
   }
-  const рот = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.018, 6, 12, Math.PI), глазМ);
-  рот.position.set(0, 1.58, 0.25); рот.rotation.z = Math.PI; g.add(рот);
+  const нос = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), кожа);
+  нос.position.set(0, 1.66, 0.26); нос.scale.set(0.9, 0.8, 1.3); g.add(нос);
+  const глаза = [], брови = [];
+  for (const sx of [-1, 1]) {
+    const б = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 10), глазБ);
+    б.position.set(sx*0.1, 1.72, 0.225); б.scale.set(1, 1.1, 0.6); g.add(б);
+    const з = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), глазЧ);
+    з.position.set(sx*0.1, 1.72, 0.26); g.add(з); глаза.push(з);
+    const бр = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.08, 4, 8), волосы);
+    бр.rotation.z = Math.PI/2 + sx*0.12; бр.position.set(sx*0.1, 1.81, 0.235); g.add(бр); брови.push(бр);
+  }
+  const рот = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.016, 6, 14, Math.PI), глазЧ);
+  рот.position.set(0, 1.6, 0.245); рот.rotation.z = Math.PI; g.add(рот);
+
+  // ── руки и ноги на шарнирах: поворачиваем ГРУППУ от плеча/бедра ──
   const ноги = [], руки = [];
   for (const sx of [-1, 1]) {
-    const н = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.42, 5, 10), штаны);
-    н.position.set(sx*0.15, 0.5, 0); g.add(н); ноги.push(н);
-    const б = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.32), обувь);
-    б.position.set(sx*0.15, 0.07, 0.05); g.add(б); ноги.push(б);
-    const р = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.38, 5, 10), куртка);
-    р.position.set(sx*0.38, 1.08, 0); g.add(р); руки.push(р);
+    const плечо = new THREE.Group(); плечо.position.set(sx*0.34, 1.32, 0); g.add(плечо);
+    const верхР = new THREE.Mesh(new THREE.CapsuleGeometry(0.082, 0.24, 6, 12), куртка);
+    верхР.position.y = -0.16; плечо.add(верхР);
+    const манжет = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.028, 6, 12), тёмн);
+    манжет.rotation.x = Math.PI/2; манжет.position.y = -0.3; плечо.add(манжет);
+    const предпл = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.2, 6, 12), кожа);
+    предпл.position.y = -0.44; плечо.add(предпл);
+    const кисть = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), кожа);
+    кисть.position.y = -0.58; кисть.scale.set(1, 0.85, 0.8); плечо.add(кисть);
+    руки.push(плечо);
+
+    const бедро = new THREE.Group(); бедро.position.set(sx*0.14, 0.86, 0); g.add(бедро);
+    const верхН = new THREE.Mesh(new THREE.CapsuleGeometry(0.105, 0.26, 6, 12), штаны);
+    верхН.position.y = -0.18; бедро.add(верхН);
+    const голень = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.24, 6, 12), штаны);
+    голень.position.y = -0.48; бедро.add(голень);
+    const ботинок = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.14, 6, 12), обувь);
+    ботинок.rotation.x = Math.PI/2; ботинок.position.set(0, -0.72, 0.05);
+    ботинок.scale.set(1, 1, 0.9); бедро.add(ботинок);
+    ноги.push(бедро);
   }
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  return { g, ноги, руки, рот, глаза };
+  return { g, ноги, руки, рот, глаза, брови, грудь, голова };
 }
 const герой = человечек(); world.add(герой.g);
 /* 🖐 ПРЕДМЕТ В РУКАХ (просьба Марка): его видно и на человечке, и в HUD, и в рюкзаке. */
@@ -552,19 +603,38 @@ function взятьВРуки(предмет) {
 
 /* ── камера из-за спины ── */
 let yaw = 0, pitch = 0.12;
+/* 📷 НАСТРОЙКА КАМЕРЫ (просьба Марка: «неудобно видеть лабиринт»).
+   Кнопка 📷 переключает вид, на компьютере ещё и колесо мыши приближает-отдаляет. */
+const ВИДЫ = [
+  { имя:'близкая',  d:5.0,  h:2.6 },
+  { имя:'обычная',  d:8.2,  h:4.2 },
+  { имя:'дальняя',  d:12.5, h:6.4 },
+  { имя:'сверху',   d:7.0,  h:13.5 },
+];
+let видКам = 1, зум = 1;
+function сменитьВид(i) {
+  видКам = (i === undefined) ? (видКам + 1) % ВИДЫ.length : clamp(i, 0, ВИДЫ.length-1);
+  зум = 1; $('camBtn').textContent = '📷 Камера: ' + ВИДЫ[видКам].имя;
+  bigMsg('📷 ' + ВИДЫ[видКам].имя.toUpperCase(), 0.9, '#7dd3fc');
+}
+$('camBtn').onclick = () => сменитьВид();
+addEventListener('wheel', e => { if (state !== 'play') return;
+  зум = clamp(зум + (e.deltaY > 0 ? 0.12 : -0.12), 0.55, 2.2); }, { passive:true });
+addEventListener('keydown', e => { if (e.code === 'KeyC') сменитьВид(); });
 const лучКамеры = new THREE.Raycaster();
 function камера(dt, мгновенно) {
-  let d = 8.2; const h = 4.2;
+  const В = ВИДЫ[видКам];
+  let d = В.d * зум; const h = В.h * зум;
   // ⚠️ камера залезала внутрь кроны дерева — пускаем луч от героя назад и подтягиваем ближе
   const от = new THREE.Vector3(player.x, player.y + 1.6, player.z);
-  const назад = new THREE.Vector3(-Math.sin(yaw), 0.32, -Math.cos(yaw)).normalize();
+  const назад = new THREE.Vector3(-Math.sin(yaw), h/(d*1.6), -Math.cos(yaw)).normalize();
   лучКамеры.set(от, назад); лучКамеры.far = d + 0.6;
   const пересеч = лучКамеры.intersectObjects(world.children, true)
     .filter(i => i.object !== герой.g && !герой.g.children.includes(i.object) &&
                  i.object !== тень && i.object !== огонёк && i.distance > 0.6);
   if (пересеч.length) d = Math.max(2.6, пересеч[0].distance - 0.7);
   const tx = player.x - Math.sin(yaw)*d, tz = player.z - Math.cos(yaw)*d;
-  const цель = new THREE.Vector3(tx, player.y + h*(d/8.2), tz);
+  const цель = new THREE.Vector3(tx, player.y + h*clamp(d/(В.d*зум), 0.45, 1), tz);
   if (мгновенно) camera.position.copy(цель); else camera.position.lerp(цель, 1 - Math.pow(0.002, dt));
   camera.lookAt(player.x + Math.sin(yaw)*2.5, player.y + 1.3, player.z + Math.cos(yaw)*2.5);
 }
@@ -610,6 +680,125 @@ let msgT = 0, sayT = 0;
 function bigMsg(t, сек, цвет) { const e = $('bigMsg'); e.textContent = t;
   e.style.color = цвет || '#fff'; e.style.opacity = 1; msgT = сек || 2; }
 function say(t, сек) { const e = $('say'); e.textContent = t; e.style.display = 'block'; sayT = сек || 5; }
+
+/* ═══════ 🏖 ПЛЯЖ РАДОСТИ и 🌊 РЕКА ПЕЧАЛИ — уже не голые диски ═══════ */
+function построитьПляж() {
+  const o = ОСТРОВА.radost; дискОстрова(o);
+  for (let i = 0; i < 10; i++) {                    // 🌴 пальмы
+    const a = rnd(0,6.3), r = rnd(8, o.r-4);
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    const g = new THREE.Group();
+    const ств = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 5.2, 9), M.дерево);
+    ств.position.y = 2.6; ств.rotation.z = rnd(-0.16, 0.16); g.add(ств);
+    for (let k = 0; k < 6; k++) { const b = k/6*6.28;
+      const л = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 2.1, 5, 9),
+        new THREE.MeshStandardMaterial({ color:0x3faa52, roughness:0.9 }));
+      л.position.set(Math.cos(b)*1.1, 5.3, Math.sin(b)*1.1);
+      л.rotation.set(Math.sin(b)*0.9, 0, -Math.cos(b)*0.9 + 0.3); g.add(л); }
+    for (let k = 0; k < 3; k++) { const кк = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8),
+      new THREE.MeshStandardMaterial({ color:0x6b4526, roughness:0.9 }));
+      кк.position.set(rnd(-0.35,0.35), 4.9, rnd(-0.35,0.35)); g.add(кк); }
+    g.position.set(x, 0, z); g.traverse(m2 => { if (m2.isMesh) m2.castShadow = true; });
+    world.add(g); стена(x-0.3, z, x+0.3, z);
+  }
+  for (let i = 0; i < 16; i++) { const a = rnd(0,6.3), r = rnd(6, o.r-3);   // 🏐 мячи и ракушки
+    const ш = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.2, 0.45), 12, 9),
+      new THREE.MeshStandardMaterial({ color:[0xff6b8a,0xffd24a,0x7dd3fc][ri(0,2)], roughness:0.5 }));
+    ш.position.set(o.x + Math.cos(a)*r, 0.3, o.z + Math.sin(a)*r); ш.castShadow = true; world.add(ш); }
+}
+function построитьРеку() {
+  const o = ОСТРОВА.pechal; дискОстрова(o);
+  const река = new THREE.Mesh(new THREE.PlaneGeometry(o.r*1.7, 9, 20, 4),
+    new THREE.MeshStandardMaterial({ color:0x3f7fa8, roughness:0.2, metalness:0.3,
+      transparent:true, opacity:0.88 }));
+  река.rotation.x = -Math.PI/2; река.position.set(o.x, 0.06, o.z); world.add(река);
+  for (let i = 0; i < 12; i++) {                    // 🌾 плакучие ивы по берегам
+    const a = rnd(0,6.3), r = rnd(8, o.r-4);
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    if (Math.abs(z-o.z) < 5) continue;
+    const g = new THREE.Group();
+    const ств = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.3, 3.6, 8), M.дерево);
+    ств.position.y = 1.8; g.add(ств);
+    for (let k = 0; k < 10; k++) { const b = k/10*6.28;
+      const в = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, rnd(1.6, 2.6), 4, 7),
+        new THREE.MeshStandardMaterial({ color:0x6a8f6a, roughness:0.95 }));
+      в.position.set(Math.cos(b)*1.3, 3.1, Math.sin(b)*1.3); в.rotation.z = Math.cos(b)*0.35; g.add(в); }
+    g.position.set(x, 0, z); g.traverse(m2 => { if (m2.isMesh) m2.castShadow = true; });
+    world.add(g); стена(x-0.3, z, x+0.3, z);
+  }
+}
+
+/* ═══════ 🌋 ВУЛКАН ЗЛОБЫ (замысел Марка) ═══════
+   Конус с кратером, потоки лавы, обгоревшие деревья — и десять камней счёта:
+   «СОСЧИТАЙ ДО ДЕСЯТИ» — тронуть их по порядку, и вулкан утихнет. */
+let камниСчёта = [], счётЗлобы = 0, вулканЛава = null;
+function построитьВулкан() {
+  const o = ОСТРОВА.zloba; дискОстрова(o);
+  const конус = new THREE.Mesh(new THREE.ConeGeometry(13, 16, 26, 4, true),
+    new THREE.MeshStandardMaterial({ color:0x3a2622, roughness:1, side:THREE.DoubleSide }));
+  конус.position.set(o.x, 7.5, o.z); конус.castShadow = конус.receiveShadow = true; world.add(конус);
+  const кратер = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.2, 1.6, 22),
+    new THREE.MeshStandardMaterial({ color:0x241614, roughness:1 }));
+  кратер.position.set(o.x, 15.4, o.z); world.add(кратер);
+  вулканЛава = new THREE.Mesh(new THREE.CircleGeometry(3.3, 22), светящийся(0xff6a2a, 2.4));
+  вулканЛава.rotation.x = -Math.PI/2; вулканЛава.position.set(o.x, 16.1, o.z); world.add(вулканЛава);
+  const жар = new THREE.PointLight(0xff7a3a, 22, 60); жар.position.set(o.x, 17, o.z); world.add(жар);
+  for (let i = 0; i < 7; i++) {                     // 🔥 потоки лавы по склону
+    const a = (i/7)*6.28 + 0.2, пути = [];
+    for (let t = 0; t <= 1.001; t += 0.16) {
+      const r = 2.6 + t*11.5, y = 15.2 - t*t*14.4 - t*1.2;
+      пути.push(new THREE.Vector3(o.x + Math.cos(a + t*0.5)*r, Math.max(0.3, y), o.z + Math.sin(a + t*0.5)*r));
+    }
+    world.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(пути), 22, 0.42, 7),
+      светящийся(0xff4d1a, 1.8)));
+  }
+  for (let i = 0; i < 12; i++) {                    // 🪵 обгоревшие стволы
+    const a = rnd(0,6.3), r = rnd(15, o.r-2);
+    const ств = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, rnd(2.4, 4.4), 7),
+      new THREE.MeshStandardMaterial({ color:0x2a1f1c, roughness:1 }));
+    ств.position.set(o.x + Math.cos(a)*r, 1.6, o.z + Math.sin(a)*r);
+    ств.rotation.z = rnd(-0.25, 0.25); ств.castShadow = true; world.add(ств);
+  }
+  for (let i = 0; i < 10; i++) { const a = rnd(0,6.3), r = rnd(14, o.r-2);
+    камень(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r, rnd(0.7, 1.6)); }
+  камниСчёта = [];
+  for (let i = 0; i < 10; i++) {                    // 🔢 десять камней счёта
+    const a = (i/10)*6.28 + 0.35, r = 17, g = new THREE.Group();
+    const к = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 1),
+      new THREE.MeshStandardMaterial({ color:0x4a3a36, roughness:0.9 }));
+    к.position.y = 0.7; к.castShadow = true; g.add(к);
+    const огонь = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10), светящийся(0xffb020, 0.4));
+    огонь.position.y = 1.5; g.add(огонь);
+    const L = new THREE.PointLight(0xffb020, 0, 10); L.position.y = 1.6; g.add(L);
+    g.position.set(o.x + Math.cos(a)*r, 0, o.z + Math.sin(a)*r); world.add(g);
+    камниСчёта.push({ g, огонь, свет:L, n:i+1, x:g.position.x, z:g.position.z, горит:false });
+  }
+}
+function обновитьВулкан(dt) {
+  if (островТут !== 'zloba' || !player) return;
+  if (вулканЛава) вулканЛава.material.emissiveIntensity = 2 + Math.sin(time*2.4)*0.6;
+  for (const к of камниСчёта) {
+    к.огонь.material.emissiveIntensity = к.горит ? 2.2 : 0.35;
+    к.свет.intensity = к.горит ? 5 : 0;
+    if (к.горит) continue;
+    if (Math.hypot(к.x-player.x, к.z-player.z) > 2.2) continue;
+    if (к.n === счётЗлобы + 1) {
+      к.горит = true; счётЗлобы = к.n; Snd.искра();
+      bigMsg('🔢 ' + счётЗлобы, 1, '#ffd24a');
+      настроение.вид = 'zloba'; настроение.сила = Math.max(0, 1 - счётЗлобы/10);
+      искра(к.x, 1.6, к.z, 0xffd24a);
+      if (счётЗлобы >= 10) {
+        bigMsg('😮‍💨 ДЕСЯТЬ.\nвулкан утихает', 3, '#a7f3d0');
+        say('🤖 ПУЛЬС: Вот и всё. Злость не исчезла — она просто перестала командовать.', 8);
+        настроение.сила = 0; огоньки++; обновитьHud(); Snd.победа();
+      }
+    } else {
+      счётЗлобы = 0; камниСчёта.forEach(x => x.горит = false);
+      bigMsg('🔁 СБИЛСЯ — СНАЧАЛА', 1.4, '#fca5a5');
+      say('🤖 ПУЛЬС: Считать надо ПО ПОРЯДКУ. Спокойно, с единицы.', 5);
+    }
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    🕸 ЛАБИРИНТ СТРАХОВ. Главная механика Марка:
@@ -853,7 +1042,7 @@ function наОстров(id, эмоция) {
   if (БЕЗ_МОСТА.has(id)) setTimeout(() => {
     say('🚫 Отсюда моста нет. Выйти можно, только справившись.', 7); }, 2200);
   else if (id === 'garmony') setTimeout(() => пульс('дом', true), 2000);
-  if (id === 'strah') { заселитьСтрахи();
+  if (id === 'strah') { заселитьСтрахи(); if (видКам < 2) сменитьВид(2);
     $('task').textContent = '👁 Не убегай — стой и смотри, и страх станет меньше';
     bigMsg('🕸 ЛАБИРИНТ СТРАХОВ', 2.6, '#7dd3fc');
     say('Убегаешь — они растут. Стоишь и смотришь — тают. Проверь сам.', 8); }
@@ -1017,9 +1206,14 @@ function двигать(dt) {
 function нарисоватьГероя(dt) {
   герой.g.position.set(player.x, player.y, player.z);
   герой.g.rotation.y = player.h;
-  const ш = Math.sin(time*10) * Math.min(1, player.скор/5);
-  герой.ноги.forEach((н, i) => { н.rotation.x = ш * (i < 2 ? 1 : -1) * 0.7; });
-  герой.руки.forEach((р, i) => { р.rotation.x = -ш * (i ? 1 : -1) * 0.8; });
+  // 🚶 шаг: ноги и руки качаются в противофазе, корпус чуть пружинит
+  const темп = Math.min(1, player.скор/6.5);
+  const ш = Math.sin(time*9) * темп;
+  герой.ноги.forEach((н, i) => { н.rotation.x = ш * (i ? -1 : 1) * 0.75; });
+  герой.руки.forEach((р, i) => { р.rotation.x = -ш * (i ? -1 : 1) * 0.7;
+    р.rotation.z = (i ? -1 : 1) * (0.08 + темп*0.06); });
+  if (герой.грудь) герой.грудь.position.y = 1.16 + Math.abs(Math.sin(time*9))*0.035*темп;
+  if (герой.голова) герой.голова.rotation.z = Math.sin(time*9)*0.05*темп;
   тень.position.set(player.x, 0.03, player.z);
   тень.material.opacity = clamp(0.55 - player.y*0.12, 0.08, 0.55);
   огонёк.position.set(player.x + Math.sin(time*1.6)*0.7, player.y + 2.2 + Math.sin(time*2.4)*0.12,
@@ -1035,11 +1229,12 @@ function новыйЦветОгонька() {
 
 /* ═══════════ мир и цикл ═══════════ */
 построитьГармонию(); построитьЛабиринт();
-дискОстрова(ОСТРОВА.radost); дискОстрова(ОСТРОВА.pechal); дискОстрова(ОСТРОВА.zloba);
+построитьПляж(); построитьРеку(); построитьВулкан();
+// 🌉 мосты открыты сразу: Марк хочет ХОДИТЬ по планете, а не смотреть на диски
 мост('garmony', 'strah', true);
-мост('garmony', 'radost', false);
-мост('garmony', 'pechal', false);
-мост('garmony', 'zloba', false);
+мост('garmony', 'radost', true);
+мост('garmony', 'pechal', true);
+мост('garmony', 'zloba', true);
 player.неуязв = 0;
 камера(0, true);
 
@@ -1056,7 +1251,7 @@ function loop(now) {
   }
   p.needsUpdate = true; мореГео.computeVertexNormals();
   if (state === 'play') {
-    двигать(dt); обновитьСтрахи(dt); обновитьВихрь(dt); обновитьПравила(dt); камера(dt, false);
+    двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьВихрь(dt); обновитьПравила(dt); камера(dt, false);
     обновитьHud();
   } else {
     camera.position.set(Math.sin(time*0.12)*34, 20, Math.cos(time*0.12)*34);
@@ -1321,6 +1516,11 @@ window.__dbg = {
   get mood(){ return { вид:настроение.вид, сила:+настроение.сила.toFixed(2) }; },
   get bag(){ return рюкзак.map(i => i.имя); },
   get hand(){ return вРуках ? вРуках.имя : null; },
+  get cam(){ return ВИДЫ[видКам].имя; },
+  setCam(i){ сменитьВид(i); return ВИДЫ[видКам].имя; },
+  get stones(){ return { счёт:счётЗлобы, всего:камниСчёта.length }; },
+  stone(n){ const к = камниСчёта[(n||1)-1]; if (!к) return null;
+    player.x = к.x; player.z = к.z; return к.n; },
   start(){ $('playBtn').click(); return state; },
   go(id){ наОстров(id); return островТут; },
   tp(x, z){ player.x = x; player.z = z; return this.pos; },
