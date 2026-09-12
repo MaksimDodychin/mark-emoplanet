@@ -105,6 +105,11 @@
     background:#f0a01b; color:#07101c; cursor:pointer; }
   #err { position:fixed; left:8px; right:8px; top:8px; z-index:99; color:#ff9b9b; font:700 13px/1.4 monospace;
     background:#200; padding:8px; border-radius:8px; display:none; white-space:pre-wrap; }
+  /* Астра: карта помещается на телефоне, её кнопка закрытия доступна. */
+  #mapBox { max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); overflow:auto; overscroll-behavior:contain; touch-action:pan-y; }
+  #mapBox canvas { touch-action:pan-y; }
+  #mapClose { position:sticky; bottom:0; z-index:1; }
+
 </style>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -118,7 +123,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "8c280387ce";</script>
+  <script>window.__APP_VER = "d8b7bb3da0";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -295,6 +300,120 @@ const ТЕКСТУРЫ = {
   strah:   холст(256,256,(g,w2,h2)=>{ g.fillStyle='#3d3a4e'; g.fillRect(0,0,w2,h2);
     крапинка(g,w2,h2,700,['#4a4660','#332f42','#565070'],4); }),
 };
+/* Астра: графические материалы и детали. Не меняет правила и случайность игры. */
+const epArt = { maps:new Map(), materials:new Map(), originalRayGeometry:[], added:0 };
+function epVisual(fn) {
+  const previous=Math.random;let seed=0x51e9b39d;
+  Math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  try{return fn();}finally{Math.random=previous;}
+}
+function epTexture(kind,base='#ffffff') {
+  const key=kind+base;if(epArt.maps.has(key))return epArt.maps.get(key);
+  const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');
+  g.fillStyle=base;g.fillRect(0,0,512,512);
+  const noise=(n,size,alpha)=>{for(let i=0;i<n;i++){g.fillStyle=Math.random()<.5?`rgba(10,18,25,${alpha})`:`rgba(255,255,255,${alpha})`;g.fillRect(Math.random()*512,Math.random()*512,size*(.5+Math.random()),size*(.5+Math.random()));}};
+  noise(15000,1.4,.10);
+  if(kind==='grass'||kind==='moss'){
+    for(let i=0;i<11000;i++){const x=Math.random()*512,y=Math.random()*512;g.strokeStyle=i%3?'rgba(25,52,16,.13)':'rgba(222,243,150,.24)';g.lineWidth=.6+Math.random();g.beginPath();g.moveTo(x,y);g.lineTo(x-2+Math.random()*4,y-2-Math.random()*5);g.stroke();}
+    if(kind==='moss')for(let i=0;i<160;i++){g.strokeStyle='rgba(205,234,117,.14)';g.lineWidth=1;g.beginPath();g.arc(Math.random()*512,Math.random()*512,2+Math.random()*5,0,7);g.stroke();}
+  }else if(kind==='sand'){
+    for(let y=-16;y<540;y+=12){g.beginPath();for(let x=0;x<=512;x+=4)g.lineTo(x,y+Math.sin(x*.025+y*.018)*4);g.strokeStyle='rgba(111,80,29,.08)';g.lineWidth=2;g.stroke();g.translate(0,2);g.strokeStyle='rgba(255,255,235,.12)';g.stroke();g.translate(0,-2);}
+  }else if(kind==='wood'){
+    for(let i=0;i<320;i++){let x=Math.random()*512;g.strokeStyle=i%3?'rgba(34,15,3,.20)':'rgba(255,234,184,.18)';g.lineWidth=.6+Math.random()*2;g.beginPath();for(let y=0;y<=512;y+=4)g.lineTo(x+Math.sin(y*.03+i)*1.8,y);g.stroke();}
+    for(let x=0;x<512;x+=128){g.fillStyle='rgba(17,11,5,.5)';g.fillRect(x,0,3,512);g.fillStyle='rgba(255,235,195,.28)';g.fillRect(x+3,0,2,512);}
+    for(let i=0;i<5;i++){let x=24+Math.random()*450,y=Math.random()*512;g.strokeStyle='rgba(35,16,4,.25)';for(let k=1;k<4;k++){g.beginPath();g.ellipse(x,y,2+k*2,5+k*7,.06,0,7);g.stroke();}}
+  }else if(kind==='stone'||kind==='brick'||kind==='ash'){
+    noise(2400,3,.11);
+    const brick=kind==='brick';if(brick)for(let y=0;y<512;y+=64){g.fillStyle='rgba(25,23,29,.27)';g.fillRect(0,y,512,3);for(let x=(y/64%2)*64;x<512;x+=128){g.fillRect(x,y,3,64);g.fillStyle='rgba(255,255,255,.13)';g.fillRect(x+3,y+4,2,54);g.fillStyle='rgba(25,23,29,.27)';}}
+    if(!brick){g.fillStyle=base;g.globalAlpha=.55;g.fillRect(0,0,512,512);g.globalAlpha=1;}
+    if(kind==='ash')for(let i=0;i<30;i++){g.strokeStyle='rgba(226,85,30,.2)';g.beginPath();let x=Math.random()*512,y=Math.random()*512;g.moveTo(x,y);for(let k=0;k<5;k++){x+=Math.random()*15-7;y+=Math.random()*15;g.lineTo(x,y);}g.stroke();}
+  }else if(kind==='cloth'){
+    g.globalAlpha=.13;for(let n=0;n<512;n+=4){g.fillStyle='#1b293a';g.fillRect(n,0,1,512);g.fillStyle='#ffffff';g.fillRect(0,n,512,1);}g.globalAlpha=1;
+  }else if(kind==='leaf'){
+    for(let i=0;i<700;i++){let x=Math.random()*512,y=Math.random()*512;g.fillStyle=i%2?'rgba(238,255,185,.25)':'rgba(12,35,18,.18)';g.beginPath();g.ellipse(x,y,3+Math.random()*4,1.5+Math.random()*2,Math.random()*7,0,7);g.fill();}
+  }else if(kind==='water'){
+    g.fillStyle='#7f7fff';g.fillRect(0,0,512,512);
+    const im=g.getImageData(0,0,512,512);for(let y=0;y<512;y++)for(let x=0;x<512;x++){const i=(y*512+x)*4;im.data[i]=128+Math.sin(x*Math.PI/32+y*Math.PI/64)*23+Math.sin(y*Math.PI/16)*8;im.data[i+1]=128+Math.cos(y*Math.PI/32+x*Math.PI/64)*23;im.data[i+2]=250;}g.putImageData(im,0,0);
+  }
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());t.colorSpace=kind==='water'?THREE.NoColorSpace:THREE.SRGBColorSpace;epArt.maps.set(key,t);return t;
+}
+function epMat(kind,color,roughness=.8,metalness=0) {
+  const key=[kind,color,roughness,metalness].join('|');if(epArt.materials.has(key))return epArt.materials.get(key);
+  const m=new THREE.MeshStandardMaterial({color,roughness,metalness,map:epTexture(kind),bumpMap:epTexture(kind),bumpScale:kind==='cloth'?.006:.028,envMapIntensity:.38});epArt.materials.set(key,m);return m;
+}
+function epDetail(parent,geometry,material,x,y,z,rotation) {
+  const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);if(rotation)m.rotation.set(...rotation);m.castShadow=m.receiveShadow=true;
+  // Detail surfaces must not change the original camera obstruction query.
+  m.raycast=()=>{};m.userData.epDetail=true;parent.add(m);epArt.added++;return m;
+}
+function epBox(g,w,h,d,m,x,y,z){return epDetail(g,new THREE.BoxGeometry(w,h,d),m,x,y,z);}
+function epTube(g,points,r,m){return epDetail(g,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p))),16,r,6,false),m,0,0,0);}
+function epVisualGeometry(mesh,geometry) {
+  const old=mesh.geometry,originalRaycast=mesh.raycast;mesh.geometry=geometry;
+  // Keep the existing camera silhouette even when smoothing an art mesh.
+  mesh.raycast=function(raycaster,hits){const visibleGeometry=this.geometry;this.geometry=old;try{return originalRaycast.call(this,raycaster,hits);}finally{this.geometry=visibleGeometry;}};
+  epArt.originalRayGeometry.push(old);
+}
+function epHeroDetails() {
+  const g=герой.g,zip=epMat('cloth',0xc8d7df,.6,.15),strap=epMat('cloth',0x9e6c3c),blue=epMat('cloth',0x4084d0),dark=epMat('cloth',0x213754),sole=epMat('cloth',0x75869a);
+  g.traverse(o=>{if(o.isMesh&&o.material.isMeshStandardMaterial){const h=o.material.color.getHex();if([0x2f6fbf,0x1f4e8c,0x3a4658,0x8a5a34,0x6b4526].includes(h)){o.material.map=epTexture('cloth');o.material.bumpMap=epTexture('cloth');o.material.bumpScale=.004;o.material.envMapIntensity=.3;o.material.needsUpdate=true;}}});
+  epTube(g,[[0,.98,.24],[0,1.16,.258],[0,1.39,.215]],.008,zip);
+  epBox(g,.025,.05,.02,zip,0,1.3,.266);
+  for(const sx of [-1,1]){
+    epTube(g,[[sx*.16,1.4,.16],[sx*.25,1.28,.20],[sx*.25,1.05,.17]],.025,strap);
+    epBox(g,.12,.105,.02,blue,sx*.145,1.12,.252);epBox(g,.12,.012,.022,zip,sx*.145,1.17,.265);
+    epTube(g,[[sx*.135,.96,-.4],[sx*.16,1.19,-.42],[sx*.10,1.46,-.28]],.016,strap);
+    const leg=герой.ноги[sx<0?0:1];epBox(leg,.19,.035,.25,sole,0,-.78,.055);epBox(leg,.13,.035,.05,zip,0,-.68,.155);
+  }
+  epBox(g,.105,.065,.025,zip,0,1.25,-.445);epBox(g,.065,.034,.031,dark,0,1.25,-.46);
+  epDetail(g,new THREE.CircleGeometry(.046,16),new THREE.MeshStandardMaterial({color:0xffd779,roughness:.5,metalness:.2}),-.145,1.28,.269);
+  // Small catchlights keep the existing face recognisable at the close camera.
+  for(const eye of герой.глаза)epDetail(eye,new THREE.SphereGeometry(.008,6,5),new THREE.MeshBasicMaterial({color:0xffffff}),-.008,.009,.023);
+}
+function epArchitecture() {
+  const brass=epMat('stone',0xb48b48,.38,.65),stone=epMat('brick',0xd6d7c9),wood=epMat('wood',0xa2754b),dark=epMat('wood',0x35455b),glass=new THREE.MeshStandardMaterial({color:0x82bfd9,roughness:.14,metalness:.3,envMapIntensity:.8});
+  const tower=маяк.g.children.find(m=>m.isMesh&&m.geometry.parameters.height===9);tower.material.map=epTexture('brick');tower.material.bumpMap=epTexture('brick');tower.material.bumpScale=.016;tower.material.needsUpdate=true;
+  for(const y of [.2,8.6,10.55])epDetail(маяк.g,new THREE.CylinderGeometry(y<1?2.0:1.4,y<1?2.1:1.4,.16,32),stone,0,y,0);
+  for(let i=0;i<8;i++){const a=i*Math.PI/4,x=Math.sin(a)*1.25,z=Math.cos(a)*1.25;epDetail(маяк.g,new THREE.CylinderGeometry(.038,.038,1.75,6),brass,x,9.6,z);}
+  epDetail(маяк.g,new THREE.ConeGeometry(1.7,.85,32),dark,0,11,0);
+  for(const y of [8.7,10.5])epDetail(маяк.g,new THREE.TorusGeometry(1.35,.05,6,32),brass,0,y,0,[Math.PI/2,0,0]);
+  for(const y of [3.2,5.8])for(const sx of [-1,1]){const x=sx*.5,z=Math.sqrt((1.9-y*.8/9)**2-x*x);epBox(маяк.g,.38,.66,.04,dark,x,y,z);epBox(маяк.g,.26,.54,.05,glass,x,y,z+.025);}
+  const shed=world.children.find(g=>g.isGroup&&g.position.x===-9&&g.position.z===7);
+  if(shed){
+    for(const x of [-2.08,2.08])for(const z of [-1.68,1.68])epBox(shed,.13,3,.13,wood,x,1.5,z);
+    for(const z of [-1.715,1.715]){epBox(shed,4.2,.14,.08,wood,0,.18,z);epBox(shed,4.2,.14,.08,wood,0,2.88,z);}
+    // The door is drawn on the original solid shed wall; no new passage implied.
+    epBox(shed,1.24,2.28,.055,epMat('wood',0x62462f),0,1.14,-1.73);
+    for(const x of [-.69,.69])epBox(shed,.1,2.38,.075,wood,x,1.19,-1.76);
+    epBox(shed,1.48,.13,.08,wood,0,2.42,-1.76);
+    epBox(shed,1.15,.075,.08,wood,0,.48,-1.78);epBox(shed,1.15,.075,.08,wood,0,1.85,-1.78);
+    const diagonal=epBox(shed,.075,1.81,.08,wood,0,1.17,-1.79);diagonal.rotation.z=-.65;
+    epDetail(shed,new THREE.SphereGeometry(.045,8,6),brass,.43,1.15,-1.82);
+    for(const x of [-1.45,1.45]){epBox(shed,.62,.75,.07,dark,x,1.7,-1.735);epBox(shed,.48,.60,.08,glass,x,1.7,-1.78);epBox(shed,.035,.60,.09,wood,x,1.7,-1.825);}
+  }
+}
+function epPolish() {
+  epHeroDetails();
+  const groundKinds={garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e']};
+  for(const o of Object.values(ОСТРОВА)){
+    const ground=world.children.find(m=>m.isMesh&&m.geometry.type==='CylinderGeometry'&&m.geometry.parameters.height===1.2&&m.position.x===o.x&&m.position.z===o.z);
+    if(ground){const [kind,color]=groundKinds[o.id],t=epTexture(kind,color).clone();t.repeat.set(o.r/4,o.r/4);ground.material.map=t;ground.material.bumpMap=t;ground.material.bumpScale=.022;ground.material.color.setHex(0xffffff);ground.material.needsUpdate=true;}
+  }
+  for(const [name,kind]of [['дерево','wood'],['доска','wood'],['камень','stone'],['песок','sand']]){const m=M[name];m.map=epTexture(kind);m.bumpMap=m.map;m.bumpScale=name==='камень'?.055:.02;m.envMapIntensity=.35;m.needsUpdate=true;}
+  world.traverse(o=>{if(!o.isMesh||o.userData.epDetail)return;const p=o.geometry.parameters||{},m=o.material;if(!m?.isMeshStandardMaterial)return;
+    if(o.geometry.type==='BoxGeometry'&&p.height===4.2&&p.depth===.6){o.material=epMat('brick',0x798197,.92);const uv=o.geometry.attributes.uv,pos=o.geometry.attributes.position,n=o.geometry.attributes.normal;for(let i=0;i<uv.count;i++){if(Math.abs(n.getZ(i))>.5)uv.setXY(i,pos.getX(i)/3,pos.getY(i)/3);else if(Math.abs(n.getX(i))>.5)uv.setXY(i,pos.getZ(i)/3,pos.getY(i)/3);else uv.setXY(i,pos.getX(i)/3,pos.getZ(i)/3);}uv.needsUpdate=true;}
+    if(o.geometry.type==='IcosahedronGeometry'&&p.detail===1&&o.parent.isGroup&&o.parent.children.length===4&&o.parent.children[0].material===M.дерево){epVisualGeometry(o,new THREE.IcosahedronGeometry(p.radius,2));m.map=epTexture('leaf');m.bumpMap=m.map;m.bumpScale=.024;m.envMapIntensity=.5;m.color.lerp(new THREE.Color(0x86b35c),.15);m.needsUpdate=true;}
+    if(m===M.камень&&o.geometry.type==='IcosahedronGeometry'){
+      const geo=new THREE.IcosahedronGeometry(p.radius,2),pos=geo.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i),k=.95+.065*Math.sin(x*6+z*3)+.04*Math.cos(y*5-x*3);pos.setXYZ(i,x*k,y*k*.8,z*k);}geo.computeVertexNormals();epVisualGeometry(o,geo);
+    }
+    if(p.radiusTop===1&&p.radiusBottom===1.35&&p.height===1.5){m.map=epTexture('brick');m.bumpMap=m.map;m.bumpScale=.025;m.needsUpdate=true;}
+    if(m.color.getHex()===0x3a2622||m.color.getHex()===0x241614){m.map=epTexture('ash');m.bumpMap=m.map;m.bumpScale=.1;m.needsUpdate=true;}
+  });
+  epArchitecture();
+  const normal=epTexture('water');normal.repeat.set(42,42);море.material.normalMap=normal;море.material.normalScale.set(.18,.18);море.material.roughness=.28;море.material.metalness=.12;море.material.color.setHex(0x3c99b3);море.material.envMapIntensity=.65;море.material.needsUpdate=true;
+  const faces=[];for(let i=0;i<6;i++){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,128);gr.addColorStop(0,'#adc7e1');gr.addColorStop(.6,'#f4e4c5');gr.addColorStop(1,'#4c6170');g.fillStyle=gr;g.fillRect(0,0,128,128);faces.push(c);}const cube=new THREE.CubeTexture(faces);cube.colorSpace=THREE.SRGBColorSpace;cube.needsUpdate=true;const pmrem=new THREE.PMREMGenerator(renderer);epArt.environment=pmrem.fromCubemap(cube);scene.environment=epArt.environment.texture;cube.dispose();pmrem.dispose();
+}
+
 const world = new THREE.Group(); scene.add(world);
 const walls = [];          // коллизии-отрезки {x1,z1,x2,z2}
 function стена(x1, z1, x2, z2) { walls.push({ x1, z1, x2, z2 }); }
@@ -1709,6 +1828,7 @@ function новыйЦветОгонька() {
 мост('garmony', 'zhadn', true);
 мост('garmony', 'skuka', true);
 мост('strah', 'obida', true);            // 🌲 в обидный лес — через лабиринт страхов
+epVisual(()=>epPolish());
 player.неуязв = 0;
 камера(0, true);
 
@@ -2096,60 +2216,89 @@ window.__dbg = {
 
 
 <script>
-// Игра стартует МГНОВЕННО из памяти телефона и работает без интернета.
-// Если интернет есть — проверяем крошечный version.json и обновляемся сами.
+/* scoped PWA updater: the installed offline copy stays until a verified replacement activates. */
 (function () {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(function(){}));
-  }
-  function баннер(текст) {
+  var scope = new URL('./', location.href).href;
+  var pending = '', checking = false, registrationPromise = null;
+  function banner(text) {
     var d = document.getElementById('updBanner');
     if (!d) { d = document.createElement('div'); d.id = 'updBanner';
-      d.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:99999;' +
-        'background:#0b1220ee;color:#7dd3fc;font:900 15px system-ui;padding:10px 18px;border-radius:14px;' +
-        'border:2px solid #7dd3fc55;box-shadow:0 8px 24px #0009';
+      d.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:99999;background:#0b1220ee;color:#7dd3fc;font:900 15px system-ui;padding:10px 18px;border-radius:14px;border:2px solid #7dd3fc55;box-shadow:0 8px 24px #0009';
       document.body.appendChild(d); }
-    d.textContent = текст;
-    return d;
+    d.textContent = text; return d;
   }
-  async function applyUpdate() {
-    баннер('🔄 Обновляю игру…');
+  function register() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    if (!registrationPromise) registrationPromise = navigator.serviceWorker.register(new URL('sw.js', scope).href,
+      { scope: scope, updateViaCache: 'none' }).catch(function (e) { registrationPromise = null; throw e; });
+    return registrationPromise;
+  }
+  function navigate(version) {
+    var url = new URL(location.href); url.searchParams.set('v', version);
+    if (url.href === location.href) location.reload(); else location.replace(url.href);
+  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (pending) navigate(pending);
+  });
+  async function version() {
+    var url = new URL('version.json', scope); url.searchParams.set('t', Date.now());
+    var response = await fetch(url.href, { cache: 'no-store' });
+    if (!response.ok) throw new Error('version unavailable');
+    var value = await response.json();
+    var actual = value && (value.build || value.v);
+    if (typeof actual !== 'string' || !/^[a-zA-Z0-9._-]{1,80}$/.test(actual)) throw new Error('invalid version');
+    return actual;
+  }
+  async function applyUpdate(next) {
     try {
-      const ks = await caches.keys();
-      await Promise.all(ks.map(function (k) { return caches.delete(k); }));
-      if ('serviceWorker' in navigator) {
-        const rs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(rs.map(function (r) { return r.unregister(); }));
+      if (typeof next !== 'string') next = await version();
+      if (next === window.__APP_VER) return false;
+      if (pending === next) return true;
+      pending = next; banner('🔄 Обновляю игру…');
+      var reg = await register();
+      if (reg) {
+        // The worker verifies index.html, fills its new cache, then takes over atomically.
+        await reg.update();
+      } else {
+        var target = new URL('index.html', scope); target.searchParams.set('v', next);
+        var response = await fetch(target.href, { cache: 'reload' });
+        if (!response.ok) throw new Error('update unavailable');
+        var match = (await response.text()).match(/window\.__APP_VER\s*=\s*["']([^"']+)["']/);
+        if (!match || match[1] !== next) throw new Error('update not ready');
+        navigate(next);
       }
-    } catch (_) {}
-    // ⚠️ Простой location.reload() может взять СТАРЫЙ html из кэша браузера,
-    // и обновление «не приходит» (жалоба Марка 23.08). Перезагружаемся по новому адресу.
-    setTimeout(function () {
-      location.replace(location.pathname + '?v=' + Date.now());
-    }, 400);
-  }
-  window.__forceUpdate = applyUpdate;
-  async function checkVersion(показать) {
-    try {
-      const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
-      if (!r.ok) throw 0;
-      const j = await r.json();
-      if (!j || !j.v) throw 0;
-      if (j.v === window.__APP_VER) { if (показать) { const d = баннер('✅ У тебя самая свежая версия');
-          setTimeout(function(){ d.remove(); }, 2500); } return false; }
-      if (window.__onUpdate) window.__onUpdate(applyUpdate); else applyUpdate();
+      setTimeout(function () { if (pending) { pending = ''; var d = document.getElementById('updBanner'); if (d) d.remove(); } }, 20000);
       return true;
     } catch (_) {
-      if (показать) { const d = баннер('📴 Нет интернета — обновить не выйдет');
-        setTimeout(function(){ d.remove(); }, 2500); }
-      return false;
+      pending = ''; var d = banner('📴 Обновление пока недоступно — игра работает офлайн');
+      setTimeout(function () { d.remove(); }, 3500); return false;
     }
   }
+  async function checkVersion(show) {
+    if (checking || pending) return false; checking = true;
+    try {
+      var next = await version();
+      if (next === window.__APP_VER) {
+        if (show === true) { var d = banner('✅ У тебя самая свежая версия'); setTimeout(function () { d.remove(); }, 2500); }
+        return false;
+      }
+      var action = function () { return applyUpdate(next); };
+      if (window.__onUpdate) window.__onUpdate(action); else await action();
+      return true;
+    } catch (_) {
+      if (show === true) { var d = banner('📴 Нет интернета — игра работает офлайн'); setTimeout(function () { d.remove(); }, 2500); }
+      return false;
+    } finally { checking = false; }
+  }
+  window.__forceUpdate = function () { return applyUpdate(); };
   window.__checkUpdate = function () { return checkVersion(true); };
-  window.addEventListener('load', function () { setTimeout(checkVersion, 300); setTimeout(checkVersion, 3000); });
+  window.addEventListener('load', function () {
+    register().catch(function () {});
+    setTimeout(checkVersion, 500); setTimeout(checkVersion, 4000);
+  });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) checkVersion(); });
-  addEventListener('online', checkVersion);
-  setInterval(checkVersion, 60 * 1000);
+  window.addEventListener('online', function () { checkVersion(); });
+  setInterval(checkVersion, 60000);
 })();
 </script>
 </body>
