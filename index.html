@@ -113,7 +113,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "c2f5148134";</script>
+  <script>window.__APP_VER = "6490fd435d";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -244,6 +244,46 @@ const M = {
 };
 const светящийся = (c, i=1.4) => new THREE.MeshStandardMaterial({ color:c, emissive:c, emissiveIntensity:i, roughness:0.3 });
 
+/* 🖼 ТЕКСТУРЫ ЗЕМЛИ (просьба Марка «сделать миры реалистичнее»): рисуем сами на canvas,
+   чтобы игра осталась одним файлом. У каждого мира своя: трава, песок, пепел, жижа. */
+function холст(w2, h2, рисуй) {
+  const c = document.createElement('canvas'); c.width = w2; c.height = h2;
+  рисуй(c.getContext('2d'), w2, h2);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+}
+function крапинка(g, w2, h2, n, цвета, размер) {
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = цвета[Math.floor(Math.random()*цвета.length)];
+    const r = размер*(0.5 + Math.random());
+    g.beginPath(); g.ellipse(Math.random()*w2, Math.random()*h2, r, r*0.7, Math.random()*3, 0, 7); g.fill();
+  }
+}
+const ТЕКСТУРЫ = {
+  garmony: холст(256,256,(g,w2,h2)=>{ g.fillStyle='#5aa845'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,900,['#6cbf52','#4e9a3c','#7ccf5e','#3f8c32'],3.5);
+    for (let i=0;i<160;i++){ g.strokeStyle='rgba(40,90,30,.28)'; g.lineWidth=1.4;
+      const x=Math.random()*w2,y=Math.random()*h2; g.beginPath(); g.moveTo(x,y); g.lineTo(x+rnd(-3,3),y-rnd(4,9)); g.stroke(); } }),
+  radost:  холст(256,256,(g,w2,h2)=>{ g.fillStyle='#e8d39a'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,1400,['#f0dcab','#dbc488','#fff0c8','#c9ad74'],2.6); }),
+  pechal:  холст(256,256,(g,w2,h2)=>{ g.fillStyle='#61798a'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,800,['#6e8899','#54697a','#7d95a5'],4); }),
+  zloba:   холст(256,256,(g,w2,h2)=>{ g.fillStyle='#4a2f26'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,1100,['#5a3a2c','#3a241d','#6b4534','#2a1a14'],4);
+    for (let i=0;i<40;i++){ g.fillStyle='rgba(255,90,30,.22)';
+      g.beginPath(); g.arc(Math.random()*w2,Math.random()*h2,rnd(2,6),0,7); g.fill(); } }),
+  otvrat:  холст(256,256,(g,w2,h2)=>{ g.fillStyle='#4e6b28'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,700,['#5f7f30','#3e5a1e','#7a9a3a'],5);
+    for (let i=0;i<70;i++){ g.strokeStyle='rgba(160,210,90,.35)'; g.lineWidth=2;
+      g.beginPath(); g.arc(Math.random()*w2,Math.random()*h2,rnd(3,9),0,7); g.stroke(); } }),
+  len:     холст(256,256,(g,w2,h2)=>{ g.fillStyle='#d9bd7a'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,1200,['#e3ca8c','#c9a862','#f0dba6'],2.4);
+    for (let i=0;i<60;i++){ g.strokeStyle='rgba(180,150,90,.35)'; g.lineWidth=1.6;
+      const y=Math.random()*h2; g.beginPath(); g.moveTo(0,y); 
+      for(let x=0;x<=w2;x+=16) g.lineTo(x, y+Math.sin(x*0.05+i)*3); g.stroke(); } }),
+  strah:   холст(256,256,(g,w2,h2)=>{ g.fillStyle='#3d3a4e'; g.fillRect(0,0,w2,h2);
+    крапинка(g,w2,h2,700,['#4a4660','#332f42','#565070'],4); }),
+};
 const world = new THREE.Group(); scene.add(world);
 const walls = [];          // коллизии-отрезки {x1,z1,x2,z2}
 function стена(x1, z1, x2, z2) { walls.push({ x1, z1, x2, z2 }); }
@@ -324,7 +364,10 @@ const ОСТРОВА = {
   radost:  { имя:'🏖 Пляж радости',     x:74,  z:0,   r:26, цвет:0xe8d39a, небо:0xffe6b8, небоВерх:0xf2a63a },
   pechal:  { имя:'🌊 Река печали',      x:-74, z:0,   r:26, цвет:0x5d7a8c, небо:0xaebcc8, небоВерх:0x4a6070 },
   zloba:   { имя:'🌋 Вулкан злобы',     x:0,   z:78,  r:28, цвет:0x6b3a2a, небо:0xffb08a, небоВерх:0x8a2a12 },
+  otvrat:  { имя:'🤢 Болото отвращения',x:58,  z:-62, r:26, цвет:0x4e6b28, небо:0xb9c98a, небоВерх:0x4a5a20 },
+  len:     { имя:'🏜 Пустыня лени',     x:-58, z:62,  r:26, цвет:0xd9bd7a, небо:0xffe6b0, небоВерх:0xc98a3a },
 };
+for (const k in ОСТРОВА) ОСТРОВА[k].id = k;        // 🆔 чтобы находить текстуру мира
 let островТут = 'garmony';
 
 // вода вокруг всей планеты
@@ -334,8 +377,10 @@ const море = new THREE.Mesh(мореГео, new THREE.MeshStandardMaterial({
 море.rotation.x = -Math.PI/2; море.position.y = -1.2; море.receiveShadow = true; scene.add(море);
 
 function дискОстрова(o) {
+  const тек = ТЕКСТУРЫ[o.id];
+  if (тек) { тек.repeat.set(o.r/5, o.r/5); }
   const верх = new THREE.Mesh(new THREE.CylinderGeometry(o.r, o.r*0.94, 1.2, 44),
-    new THREE.MeshStandardMaterial({ color:o.цвет, roughness:0.95 }));
+    new THREE.MeshStandardMaterial({ color:тек ? 0xffffff : o.цвет, map:тек || null, roughness:0.95 }));
   верх.position.set(o.x, -0.6, o.z); верх.receiveShadow = true; world.add(верх);
   // 🏝 песчаный кант по кромке — остров перестаёт быть «зелёной таблеткой»
   const кант = new THREE.Mesh(new THREE.TorusGeometry(o.r - 0.6, 1.0, 8, 48), M.песок);
@@ -681,6 +726,66 @@ function bigMsg(t, сек, цвет) { const e = $('bigMsg'); e.textContent = t;
   e.style.color = цвет || '#fff'; e.style.opacity = 1; msgT = сек || 2; }
 function say(t, сек) { const e = $('say'); e.textContent = t; e.style.display = 'block'; sayT = сек || 5; }
 
+/* ═══════ 🔮 СФЕРЫ ЭМОЦИЙ (просьба Марка: «я ищу эти сферы») ═══════
+   В каждом мире на постаменте светится СВОЯ сфера: фиолетовая в лабиринте страхов,
+   зелёная в болоте отвращения, синяя у реки печали, жёлтая на пляже счастья…
+   Видно её сразу — но пока не справился с эмоцией, её держит скорлупа. */
+const ЦВЕТ_СФЕРЫ = {
+  strah:0x8b5cf6, otvrat:0x5ad14a, pechal:0x3f8fe0, radost:0xffd24a,
+  zloba:0xff4d2a, len:0xe0a040, garmony:0xffe08a,
+};
+const сферы = {};
+function поставитьСферу(id, x, z) {
+  const цвет = ЦВЕТ_СФЕРЫ[id] || 0xffe08a;
+  const g = new THREE.Group();
+  const пост = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.35, 1.5, 14),
+    new THREE.MeshStandardMaterial({ color:0x6b6470, roughness:0.85 }));
+  пост.position.y = 0.75; пост.castShadow = пост.receiveShadow = true; g.add(пост);
+  const чаша = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.16, 10, 22),
+    new THREE.MeshStandardMaterial({ color:0xb9a06a, roughness:0.35, metalness:0.8 }));
+  чаша.rotation.x = Math.PI/2; чаша.position.y = 1.55; g.add(чаша);
+  const шар = new THREE.Mesh(new THREE.IcosahedronGeometry(0.62, 3),
+    new THREE.MeshStandardMaterial({ color:цвет, emissive:цвет, emissiveIntensity:1.8,
+      roughness:0.1, metalness:0.2 }));
+  шар.position.y = 2.3; g.add(шар);
+  const скорлупа = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1),
+    new THREE.MeshStandardMaterial({ color:0xcfd6e4, transparent:true, opacity:0.28,
+      roughness:0.1, metalness:0.5, wireframe:true }));
+  скорлупа.position.y = 2.3; g.add(скорлупа);
+  const L = new THREE.PointLight(цвет, 8, 22); L.position.y = 2.3; g.add(L);
+  const луч = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1.1, 16, 14, 1, true),
+    new THREE.MeshBasicMaterial({ color:цвет, transparent:true, opacity:0.10, side:THREE.DoubleSide }));
+  луч.position.y = 9; g.add(луч);
+  g.position.set(x, 0, z); world.add(g); стена(x-0.9, z, x+0.9, z);
+  сферы[id] = { g, шар, скорлупа, свет:L, луч, x, z, открыта:false, взята:false, цвет };
+  return сферы[id];
+}
+function открытьСферу(id) {
+  const с = сферы[id]; if (!с || с.открыта) return;
+  с.открыта = true; с.скорлупа.visible = false;
+  for (let i = 0; i < 24; i++) искра(с.x, 2.3, с.z, с.цвет);
+  Snd.искра();
+  bigMsg('🔮 СФЕРА ОСВОБОДИЛАСЬ!\nзабери её', 3, '#' + с.цвет.toString(16));
+  say('🤖 ПУЛЬС: Ты справился — значит, сфера твоя. Подойди и возьми.', 8);
+}
+function обновитьСферы(dt) {
+  for (const id in сферы) {
+    const с = сферы[id]; if (с.взята) continue;
+    с.шар.rotation.y += dt*0.8; с.шар.position.y = 2.3 + Math.sin(time*1.6)*0.12;
+    с.скорлупа.rotation.y -= dt*0.4; с.скорлупа.rotation.x += dt*0.2;
+    с.свет.intensity = (с.открыта ? 12 : 6) + Math.sin(time*3)*2;
+    с.луч.material.opacity = с.открыта ? 0.18 + Math.sin(time*2)*0.05 : 0.08;
+    if (!с.открыта || островТут !== id) continue;
+    if (Math.hypot(с.x-player.x, с.z-player.z) > 2.4) continue;
+    с.взята = true; с.g.visible = false; огоньки++; обновитьHud(); Snd.победа();
+    for (let i = 0; i < 30; i++) искра(с.x, 2.3, с.z, с.цвет);
+    рюкзак.push({ em:'🔮', имя:'Сфера ' + ОСТРОВА[id].имя.replace(/^\S+\s/, ''), можноБросить:false });
+    bigMsg('🔮 СФЕРА У ТЕБЯ!\n' + огоньки + ' из 8', 3, '#' + с.цвет.toString(16));
+    say('🤖 ПУЛЬС: Неси её к маяку на острове Гармонии.', 8);
+    if (огоньки >= 8) открытьДост('mayak');
+  }
+}
+
 /* ═══════ 🏖 ПЛЯЖ РАДОСТИ и 🌊 РЕКА ПЕЧАЛИ — уже не голые диски ═══════ */
 function построитьПляж() {
   const o = ОСТРОВА.radost; дискОстрова(o);
@@ -705,6 +810,7 @@ function построитьПляж() {
     const ш = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.2, 0.45), 12, 9),
       new THREE.MeshStandardMaterial({ color:[0xff6b8a,0xffd24a,0x7dd3fc][ri(0,2)], roughness:0.5 }));
     ш.position.set(o.x + Math.cos(a)*r, 0.3, o.z + Math.sin(a)*r); ш.castShadow = true; world.add(ш); }
+  поставитьСферу('radost', o.x, o.z - 15);
 }
 function построитьРеку() {
   const o = ОСТРОВА.pechal; дискОстрова(o);
@@ -725,6 +831,101 @@ function построитьРеку() {
       в.position.set(Math.cos(b)*1.3, 3.1, Math.sin(b)*1.3); в.rotation.z = Math.cos(b)*0.35; g.add(в); }
     g.position.set(x, 0, z); g.traverse(m2 => { if (m2.isMesh) m2.castShadow = true; });
     world.add(g); стена(x-0.3, z, x+0.3, z);
+  }
+  поставитьСферу('pechal', o.x, o.z - 15);
+}
+
+/* ═══════ 🤢 БОЛОТО ОТВРАЩЕНИЯ (мир Марка) ═══════
+   Зелёная жижа, пузыри, плесень и слизни. Лечится не бегством, а УБОРКОЙ:
+   подошёл к гадости — и убрал. Убрал пять — сфера освобождается. */
+let гадости = [], убрано = 0;
+function построитьБолото() {
+  const o = ОСТРОВА.otvrat; дискОстрова(o);
+  const жижа = new THREE.Mesh(new THREE.CircleGeometry(o.r-3, 40),
+    new THREE.MeshStandardMaterial({ color:0x5c7a2a, roughness:0.35, metalness:0.15,
+      transparent:true, opacity:0.94 }));
+  жижа.rotation.x = -Math.PI/2; жижа.position.set(o.x, 0.08, o.z); world.add(жижа);
+  for (let i = 0; i < 16; i++) {                    // 🪵 коряги и кочки
+    const a = rnd(0,6.3), r = rnd(6, o.r-3);
+    const к = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.8, 1.6), 12, 8),
+      new THREE.MeshStandardMaterial({ color:0x3f5a20, roughness:1 }));
+    к.position.set(o.x + Math.cos(a)*r, 0.2, o.z + Math.sin(a)*r);
+    к.scale.y = 0.45; к.castShadow = true; world.add(к);
+  }
+  гадости = []; убрано = 0;
+  for (let i = 0; i < 5; i++) {                     // 🫧 комки слизи — их и убирать
+    const a = (i/5)*6.28 + 0.5, r = 11;
+    const g = new THREE.Group();
+    const ком = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 2),
+      new THREE.MeshStandardMaterial({ color:0x8fc93a, roughness:0.25, metalness:0.1,
+        emissive:0x2f5a10, emissiveIntensity:0.5 }));
+    ком.position.y = 0.8; ком.scale.y = 0.8; g.add(ком);
+    for (let k = 0; k < 4; k++) {                   // пузыри сверху
+      const п = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.15,0.3), 10, 8),
+        new THREE.MeshStandardMaterial({ color:0xb9e86a, transparent:true, opacity:0.7, roughness:0.2 }));
+      п.position.set(rnd(-0.5,0.5), 1.4 + rnd(0,0.5), rnd(-0.5,0.5)); g.add(п);
+    }
+    g.position.set(o.x + Math.cos(a)*r, 0, o.z + Math.sin(a)*r);
+    g.traverse(m2 => { if (m2.isMesh) m2.castShadow = true; }); world.add(g);
+    гадости.push({ g, x:g.position.x, z:g.position.z, убрана:false });
+  }
+  поставитьСферу('otvrat', o.x, o.z - 16);
+}
+function обновитьБолото(dt) {
+  if (островТут !== 'otvrat' || !player) return;
+  for (const г of гадости) {
+    if (г.убрана) continue;
+    г.g.rotation.y += dt*0.5;
+    г.g.position.y = Math.sin(time*1.4 + г.x)*0.08;
+    if (Math.hypot(г.x-player.x, г.z-player.z) > 2.2) continue;
+    г.убрана = true; г.g.visible = false; убрано++;
+    for (let i = 0; i < 16; i++) искра(г.x, 1, г.z, 0x9fd14a);
+    Snd.искра(); bigMsg('🧼 УБРАЛ! ' + убрано + ' / 5', 1.6, '#9fd14a');
+    if (убрано === 1) say('🤖 ПУЛЬС: Видишь? Вблизи это просто комок грязи. Отвращение проходит, когда наводишь порядок.', 8);
+    if (убрано >= 5) { настроение.сила = 0; открытьСферу('otvrat'); }
+  }
+}
+
+/* ═══════ 🏜 ПУСТЫНЯ ЛЕНИ (мир Марка) ═══════
+   Горячий песок и ни одной тени. Приляжешь — зыбучие пески начинают засасывать.
+   Спасают только маленькие шаги: стоишь — тонешь, идёшь — выбираешься. */
+let зыбун = 0;
+function построитьПустыню() {
+  const o = ОСТРОВА.len; дискОстрова(o);
+  for (let i = 0; i < 14; i++) {                    // 🏜 барханы
+    const a = rnd(0,6.3), r = rnd(5, o.r-4);
+    const б = new THREE.Mesh(new THREE.SphereGeometry(rnd(2.5, 5), 16, 10), M.песок);
+    б.position.set(o.x + Math.cos(a)*r, -0.6, o.z + Math.sin(a)*r);
+    б.scale.y = 0.22; б.receiveShadow = true; world.add(б);
+  }
+  for (let i = 0; i < 9; i++) {                     // 🌵 кактусы
+    const a = rnd(0,6.3), r = rnd(7, o.r-4);
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    const g = new THREE.Group();
+    const м = new THREE.MeshStandardMaterial({ color:0x3f8c52, roughness:0.95 });
+    const ств = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 2.2, 7, 14), м);
+    ств.position.y = 1.6; g.add(ств);
+    for (const sx of [-1, 1]) { const в = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.9, 6, 12), м);
+      в.position.set(sx*0.6, 1.9, 0); в.rotation.z = sx*0.9; g.add(в); }
+    g.position.set(x, 0, z); g.traverse(m2 => { if (m2.isMesh) m2.castShadow = true; });
+    world.add(g); стена(x-0.4, z, x+0.4, z);
+  }
+  for (let i = 0; i < 8; i++) { const a = rnd(0,6.3), r = rnd(8, o.r-4);
+    камень(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r, rnd(0.5, 1.1)); }
+  поставитьСферу('len', o.x, o.z - 15);
+}
+function обновитьПустыню(dt) {
+  if (островТут !== 'len' || !player) return;
+  if (player.скор < 0.8) { зыбун = Math.min(1, зыбун + dt*0.16); настроение.вид = 'len'; }
+  else зыбун = Math.max(0, зыбун - dt*0.45);
+  настроение.сила = зыбун;
+  герой.g.position.y = player.y - зыбун*0.9;        // 🏜 проваливаешься в песок
+  if (зыбун > 0.5 && Math.random() < dt*1.4) пульс('лень');
+  if (зыбун >= 1) { зыбун = 0; урон('Зыбучие пески засосали!'); }
+  if (зыбун <= 0.02 && !сферы.len.открыта) {
+    сферы.len.путь = (сферы.len.путь || 0) + dt*(player.скор > 2 ? 1 : 0);
+    if (сферы.len.путь > 12) { открытьСферу('len');   // прошёл, не залёживаясь
+      say('🤖 ПУЛЬС: Видишь — маленький шаг всё ещё считается шагом.', 8); }
   }
 }
 
@@ -773,6 +974,7 @@ function построитьВулкан() {
     g.position.set(o.x + Math.cos(a)*r, 0, o.z + Math.sin(a)*r); world.add(g);
     камниСчёта.push({ g, огонь, свет:L, n:i+1, x:g.position.x, z:g.position.z, горит:false });
   }
+  поставитьСферу('zloba', o.x, o.z - 21);
 }
 function обновитьВулкан(dt) {
   if (островТут !== 'zloba' || !player) return;
@@ -790,7 +992,7 @@ function обновитьВулкан(dt) {
       if (счётЗлобы >= 10) {
         bigMsg('😮‍💨 ДЕСЯТЬ.\nвулкан утихает', 3, '#a7f3d0');
         say('🤖 ПУЛЬС: Вот и всё. Злость не исчезла — она просто перестала командовать.', 8);
-        настроение.сила = 0; огоньки++; обновитьHud(); Snd.победа();
+        настроение.сила = 0; Snd.победа(); открытьСферу('zloba');
       }
     } else {
       счётЗлобы = 0; камниСчёта.forEach(x => x.горит = false);
@@ -894,6 +1096,7 @@ function построитьЛабиринт() {
   }
   for (let i = 0; i < 10; i++) { const a = rnd(0,6.3), r = rnd(4, o.r-3);
     камень(o.x + Math.cos(a)*r, o.z + Math.sin(a)*r, rnd(0.5, 1.1)); }
+  поставитьСферу('strah', o.x, o.z);          // 🔮 фиолетовая — в самом центре лабиринта
 }
 function заселитьСтрахи() {
   страхи.forEach(s => world.remove(s.mesh)); страхи = [];
@@ -959,8 +1162,7 @@ function победитьСтрах(s, ловушкой) {
     if (счёт.побегов === 0) открытьДост('nebeg');
     bigMsg('🕸 ЛАБИРИНТ ПРОЙДЕН!', 3, '#86efac');
     say('Ты посмотрел им в глаза — и они стали меньше тебя. Мост домой открыт.', 7);
-    мосты.forEach(м => { if (м.от === 'garmony' && м.до === 'strah') { м.открыт = true; м.mesh.visible = true; } });
-    настроение.сила = 0;
+    настроение.сила = 0; открытьСферу('strah');
   }
 }
 
@@ -1030,10 +1232,17 @@ function наОстров(id, эмоция) {
   scene.background.setHex(o.небо); scene.fog.color.setHex(o.небо);
   небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);          // 🌤 градиент неба под настроение мира
   // ⚠️ правило из «Поместья»: темнота должна быть ЧИТАЕМОЙ, иначе чёрный экран
-  hemi.intensity = id === 'strah' ? 0.62 : 0.85;
-  sun.intensity  = id === 'strah' ? 0.55 : 1.15;
-  scene.fog.near = id === 'strah' ? 22 : 60;
-  scene.fog.far  = id === 'strah' ? 90 : 190;
+  const воздух = {
+    garmony:{ hemi:0.85, sun:1.15, near:60, far:190 },
+    strah:  { hemi:0.62, sun:0.55, near:22, far:90  },   // 🕸 сумрак и близкий туман
+    radost: { hemi:1.0,  sun:1.35, near:70, far:220 },   // 🏖 яркий полдень
+    pechal: { hemi:0.7,  sun:0.6,  near:26, far:110 },   // 🌊 серая морось
+    zloba:  { hemi:0.7,  sun:0.85, near:34, far:130 },   // 🌋 марево и пепел
+    otvrat: { hemi:0.72, sun:0.8,  near:24, far:100 },   // 🤢 душный смрад
+    len:    { hemi:1.0,  sun:1.3,  near:44, far:170 },   // 🏜 зной
+  }[id] || { hemi:0.85, sun:1.15, near:60, far:190 };
+  hemi.intensity = воздух.hemi; sun.intensity = воздух.sun;
+  scene.fog.near = воздух.near; scene.fog.far = воздух.far;
   настроение.вид = эмоция || (id === 'strah' ? 'strah' : id === 'zloba' ? 'zloba' : null);
   настроение.сила = эмоция ? 1 : (id === 'garmony' ? 0 : настроение.сила);
   камера(0, true); обновитьHud();
@@ -1224,17 +1433,19 @@ function нарисоватьГероя(dt) {
   sun.target.position.set(player.x, 0, player.z); sun.target.updateMatrixWorld();
 }
 function новыйЦветОгонька() {
-  return { garmony:0xffe08a, strah:0x7dd3fc, radost:0xffd24a, pechal:0x6aa8d8, zloba:0xff5a3d }[островТут] || 0xffe08a;
+  return ЦВЕТ_СФЕРЫ[островТут] || 0xffe08a;
 }
 
 /* ═══════════ мир и цикл ═══════════ */
 построитьГармонию(); построитьЛабиринт();
-построитьПляж(); построитьРеку(); построитьВулкан();
+построитьПляж(); построитьРеку(); построитьВулкан(); построитьБолото(); построитьПустыню();
 // 🌉 мосты открыты сразу: Марк хочет ХОДИТЬ по планете, а не смотреть на диски
 мост('garmony', 'strah', true);
 мост('garmony', 'radost', true);
 мост('garmony', 'pechal', true);
 мост('garmony', 'zloba', true);
+мост('garmony', 'otvrat', true);
+мост('garmony', 'len', true);
 player.неуязв = 0;
 камера(0, true);
 
@@ -1251,7 +1462,8 @@ function loop(now) {
   }
   p.needsUpdate = true; мореГео.computeVertexNormals();
   if (state === 'play') {
-    двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьВихрь(dt); обновитьПравила(dt); камера(dt, false);
+    двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
+    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); камера(dt, false);
     обновитьHud();
   } else {
     camera.position.set(Math.sin(time*0.12)*34, 20, Math.cos(time*0.12)*34);
@@ -1322,7 +1534,8 @@ const Snd = {
   },
   стоп(){ clearInterval(this.таймер); this.тема = null; },
 };
-const МУЗЫКА_ОСТРОВА = { garmony:'calm', strah:'fear', zloba:'anger', pechal:'sad', radost:'calm' };
+const МУЗЫКА_ОСТРОВА = { garmony:'calm', strah:'fear', zloba:'anger', pechal:'sad', radost:'calm',
+  otvrat:'fear', len:'sad' };
 
 /* ═══════════ 🤖 ПУЛЬС — голос планеты (заказ Марка) ═══════════
    Искусственный разум планеты. Предупреждает заранее и подначивает по-доброму. */
@@ -1472,6 +1685,7 @@ function зал(g, w2, h2, c1, c2) { const gr = g.createLinearGradient(0, 0, 0, 
 const КАРТА_ПОРЯДОК = [
   ['garmony','💛 Гармония'], ['strah','🕸 Лабиринт страхов'], ['radost','🏖 Остров счастья'],
   ['pechal','🌊 Река печали'], ['zloba','🌋 Вулкан злобы'], ['otvrat','🤢 Болото отвращения'],
+  ['len','🏜 Пустыня лени'],
 ];
 let пойманныеСтрахи = [];
 /* 🗺 Пока мир не открыт — на карте он «???» (просьба Марка). */
@@ -1519,6 +1733,9 @@ window.__dbg = {
   get cam(){ return ВИДЫ[видКам].имя; },
   setCam(i){ сменитьВид(i); return ВИДЫ[видКам].имя; },
   get stones(){ return { счёт:счётЗлобы, всего:камниСчёта.length }; },
+  get spheres(){ return Object.keys(сферы).map(k => k + (сферы[k].взята ? ' ✓' : сферы[k].открыта ? ' 🔓' : ' 🔒')); },
+  openSphere(id){ открытьСферу(id); return сферы[id] ? сферы[id].открыта : null; },
+  toSphere(id){ const с = сферы[id]; if (!с) return null; player.x = с.x + 1.2; player.z = с.z + 1.2; return id; },
   stone(n){ const к = камниСчёта[(n||1)-1]; if (!к) return null;
     player.x = к.x; player.z = к.z; return к.n; },
   start(){ $('playBtn').click(); return state; },
