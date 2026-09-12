@@ -118,7 +118,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "1312e8adcb";</script>
+  <script>window.__APP_VER = "ae359ac0f0";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -759,7 +759,7 @@ const ЗАДАЧА_МИРА = {
   pechal: 'Зажги три тёплых огонька-воспоминания у реки.',
   zhadn:  'Открой рюкзак и положи одну вещь на землю. Станет легче — и выберешься.',
   skuka:  'Придумай себе игру: тронь палку, камень и банку.',
-  obida:  'Вспомни, как было на самом деле: выбери правдивую мысль три раза.',
+  obida:  'Лучший способ от обиды — уверенность в себе. Вспомни, на что ты был обижен, и перестань так думать: выбери правдивую мысль три раза.',
 };
 function поставитьСферу(id, x, z) {
   const цвет = ЦВЕТ_СФЕРЫ[id] || 0xffe08a;
@@ -1221,6 +1221,8 @@ function обновитьЛес(dt) {
   const d = Math.hypot(морф.x-player.x, морф.z-player.z);
   if (d > 2.4) { морф.x += (player.x-морф.x)/d*0.9*dt; морф.z += (player.z-морф.z)/d*0.9*dt;
     морф.g.position.x = морф.x; морф.g.position.z = морф.z; }
+  if (!морф.первое && d < 9) { морф.первое = true;
+    say('🤖 ПУЛЬС: Бить его бесполезно. Лучший способ от обиды — уверенность в себе: вспомни, на что ты обиделся, и перестань так думать.', 11); }
   if (!морф.ждёт && d < 6) спроситьМысль();
 }
 function спроситьМысль() {
