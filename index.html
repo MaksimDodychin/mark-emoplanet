@@ -134,7 +134,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "60ab81c216";</script>
+  <script>window.__APP_VER = "e1c84c77a8";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -415,10 +415,11 @@ function epArchitecture() {
 }
 function epPolish() {
   epHeroDetails();
-  const groundKinds={garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e']};
+  const groundKinds={garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e'],zaznai:['stone','#9fb4c8']};
   for(const o of Object.values(ОСТРОВА)){
     const ground=world.children.find(m=>m.isMesh&&m.geometry.type==='CylinderGeometry'&&m.geometry.parameters.height===1.2&&m.position.x===o.x&&m.position.z===o.z);
-    if(ground){const [kind,color]=groundKinds[o.id],t=epTexture(kind,color).clone();t.repeat.set(o.r/4,o.r/4);ground.material.map=t;ground.material.bumpMap=t;ground.material.bumpScale=.022;ground.material.color.setHex(0xffffff);ground.material.needsUpdate=true;}
+    /* ⚠️ новый остров без записи тут ронял ВСЮ игру — теперь есть запасной вариант */
+    if(ground){const [kind,color]=groundKinds[o.id]||['stone','#9a9a9a'],t=epTexture(kind,color).clone();t.repeat.set(o.r/4,o.r/4);ground.material.map=t;ground.material.bumpMap=t;ground.material.bumpScale=.022;ground.material.color.setHex(0xffffff);ground.material.needsUpdate=true;}
   }
   for(const [name,kind]of [['дерево','wood'],['доска','wood'],['камень','stone'],['песок','sand']]){const m=M[name];m.map=epTexture(kind);m.bumpMap=m.map;m.bumpScale=name==='камень'?.055:.02;m.envMapIntensity=.35;m.needsUpdate=true;}
   world.traverse(o=>{if(!o.isMesh||o.userData.epDetail)return;const p=o.geometry.parameters||{},m=o.material;if(!m?.isMeshStandardMaterial)return;
@@ -519,6 +520,7 @@ const ОСТРОВА = {
   len:     { имя:'🏜 Пустыня лени',     x:-58, z:62,  r:26, цвет:0xd9bd7a, небо:0xffe6b0, небоВерх:0xc98a3a },
   zhadn:   { имя:'🕳 Пропасть жадности',x:58,  z:62,  r:26, цвет:0x6b5a2a, небо:0xe0c060, небоВерх:0x6b4a10 },
   skuka:   { имя:'😑 Скучная поляна',   x:-58, z:-62, r:24, цвет:0x8a8f8a, небо:0xc8ccc8, небоВерх:0x7a8080 },
+  zaznai:  { имя:'✨ Зеркала зазнайства',x:104, z:66, r:24, цвет:0x8aa0b8, небо:0xdfe9f5, небоВерх:0x6b86a8 },
   obida:   { имя:'🌲 Лес обиды',        x:0,   z:-150,r:28, цвет:0x2f4a34, небо:0x7a8f80, небоВерх:0x2a3a30 },
 };
 for (const k in ОСТРОВА) ОСТРОВА[k].id = k;        // 🆔 чтобы находить текстуру мира
@@ -887,6 +889,7 @@ function say(t, сек) { const e = $('say'); e.textContent = t; e.style.display
    зелёная в болоте отвращения, синяя у реки печали, жёлтая на пляже счастья…
    Видно её сразу — но пока не справился с эмоцией, её держит скорлупа. */
 const ЦВЕТ_СФЕРЫ = {
+  zaznai:0x7dd3fc,
   strah:0x8b5cf6, otvrat:0x5ad14a, pechal:0x3f8fe0, radost:0xffd24a,
   zloba:0xff4d2a, len:0xe0a040, garmony:0xffe08a,
   zhadn:0xffd24a, skuka:0xb8bcc0, obida:0x7f5af0,
@@ -901,6 +904,7 @@ const ЗАДАЧА_МИРА = {
   pechal: 'Зажги три тёплых огонька-воспоминания у реки.',
   zhadn:  'Открой рюкзак и положи одну вещь на землю. Станет легче — и выберешься.',
   skuka:  'Придумай себе игру: тронь палку, камень и банку.',
+  zaznai: 'Зеркала растут, пока ты на себя смотришь. Отвернись от каждого — и они потускнеют. Всех пять погасишь — сфера твоя.',
   obida:  'Лучший способ от обиды — уверенность в себе. Вспомни, на что ты был обижен, и перестань так думать: выбери правдивую мысль три раза.',
 };
 function поставитьСферу(id, x, z) {
@@ -990,6 +994,86 @@ function показатьФинал() {
   $('финал').classList.remove('hidden');
 }
 $('финалЕщё').onclick = () => location.reload();
+
+/* ═══════ ✨ ЗЕРКАЛА ЗАЗНАЙСТВА (мир Марка) ═══════
+   Заходишь — и со всех сторон на тебя зеркала. Правило ЗЕРКАЛЬНОЕ к страху:
+   страх уменьшается, когда СМОТРИШЬ, а зазнайство — когда ПЕРЕСТАЁШЬ смотреть на себя. */
+let зеркала = [];
+const ХВАСТОВСТВО = [
+  'Я тут самый лучший.', 'Все остальные и рядом не стояли.', 'У меня всегда получается.',
+  'Меня должны хвалить чаще.', 'Это я всё придумал, не они.', 'Смотри, какой я молодец.',
+];
+function фигуркаОтражения(цвет) {
+  const g = new THREE.Group();
+  const тело = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.9, 4, 10),
+    new THREE.MeshStandardMaterial({ color:цвет, roughness:0.35, metalness:0.4,
+      emissive:цвет, emissiveIntensity:0.25, transparent:true, opacity:0.85 }));
+  тело.position.y = 1.0; g.add(тело);
+  const гол = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10),
+    new THREE.MeshStandardMaterial({ color:0xe8d6c0, roughness:0.5, metalness:0.3,
+      transparent:true, opacity:0.85 }));
+  гол.position.y = 1.85; g.add(гол);
+  return g;
+}
+function построитьЗеркала() {
+  const o = ОСТРОВА.zaznai; дискОстрова(o);
+  зеркала = [];
+  const стеклоМат = () => new THREE.MeshStandardMaterial({ color:0xdff0ff, roughness:0.05,
+    metalness:1.0, emissive:0x9fc6ff, emissiveIntensity:0.35 });
+  for (let i = 0; i < 5; i++) {
+    const a = (i/5)*6.283 + 0.45, r = 13;
+    const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
+    const g = new THREE.Group(); g.position.set(x, 0, z);
+    g.rotation.y = Math.atan2(o.x - x, o.z - z);
+    const рама = new THREE.Mesh(new THREE.BoxGeometry(4.6, 7.6, 0.55),
+      new THREE.MeshStandardMaterial({ color:0xc8a44a, roughness:0.3, metalness:0.9 }));
+    рама.position.y = 3.8; рама.castShadow = true; g.add(рама);
+    const ст = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 6.8), стеклоМат());
+    ст.position.set(0, 3.8, 0.3); g.add(ст);
+    const отр = фигуркаОтражения(0x9fc6ff);
+    отр.position.set(0, 0.6, 0.45); g.add(отр);
+    const св = new THREE.PointLight(0x9fc6ff, 2.2, 16, 1.7); св.position.set(0, 4, 1.2); g.add(св);
+    world.add(g);
+    зеркала.push({ g, ст, отр, св, x, z, размер:1, готово:false, сказалT:0 });
+  }
+  /* пол блестит, как каток: зазнайство любит гладкие поверхности */
+  const блик = new THREE.Mesh(new THREE.CircleGeometry(o.r - 2, 40),
+    new THREE.MeshStandardMaterial({ color:0xbcd6ea, roughness:0.12, metalness:0.8 }));
+  блик.rotation.x = -Math.PI/2; блик.position.set(o.x, 0.06, o.z); world.add(блик);
+  поставитьСферу('zaznai', o.x, o.z);
+}
+function обновитьЗеркала(dt) {
+  if (островТут !== 'zaznai' || !зеркала.length) return;
+  const f = { x: Math.sin(yaw), z: Math.cos(yaw) };
+  let погасло = 0, самое = 0;
+  for (const з of зеркала) {
+    if (з.готово) { погасло++; continue; }
+    const dx = з.x - player.x, dz = з.z - player.z, d = Math.hypot(dx, dz) || 1;
+    const смотрю = ((dx/d)*f.x + (dz/d)*f.z) > 0.74 && d < 22;
+    if (смотрю) {
+      з.размер = Math.min(2.6, з.размер + dt*0.40);
+      з.сказалT -= dt;
+      if (з.сказалT <= 0 && d < 14) { з.сказалT = 6 + Math.random()*4;
+        say('🪞 Отражение: «' + ХВАСТОВСТВО[Math.floor(Math.random()*ХВАСТОВСТВО.length)] + '»', 5); }
+    } else з.размер = Math.max(0.3, з.размер - dt*0.32);
+    самое = Math.max(самое, з.размер);
+    з.отр.scale.setScalar(з.размер);
+    з.отр.position.y = 0.6 + (з.размер - 1)*0.5;
+    з.ст.material.emissiveIntensity = 0.2 + з.размер*0.25;
+    з.св.intensity = 1.2 + з.размер*1.6;
+    if (з.размер <= 0.42) {
+      з.готово = true; погасло++;
+      з.ст.material.color.setHex(0x5a6470); з.ст.material.metalness = 0.1;
+      з.ст.material.emissiveIntensity = 0; з.св.intensity = 0; з.отр.visible = false;
+      for (let i = 0; i < 16; i++) искра(з.x, 3.5, з.z, 0x7dd3fc);
+      Snd.искра(); bigMsg('🪞 ЗЕРКАЛО ПОТУСКНЕЛО\n' + погасло + ' / ' + зеркала.length, 2, '#7dd3fc');
+      if (погасло === 1) say('🤖 ПУЛЬС: Вот так. Страх уходит, когда смотришь. Зазнайство — когда перестаёшь смотреть на себя.', 9);
+    }
+  }
+  настроение.вид = 'zaznai';
+  настроение.сила = clamp((самое - 0.6)/1.8, 0, 1);
+  if (погасло >= зеркала.length) { настроение.сила = 0; открытьСферу('zaznai'); }
+}
 
 /* ═══════ 🏖 ПЛЯЖ РАДОСТИ и 🌊 РЕКА ПЕЧАЛИ — уже не голые диски ═══════ */
 function построитьПляж() {
@@ -1758,11 +1842,13 @@ const ЭМОЦИИ = {
   skuka:  { имя:'скука',  цвет:'#9ca3af', правило:'ничего не делаешь' },
   zhadn:  { имя:'жадность', цвет:'#ffd24a', правило:'взял себе самый большой кусок' },
   obida:  { имя:'обида',  цвет:'#a78bfa', правило:'носишь обиду и не отпускаешь' },
+  zaznai: { имя:'зазнайство', цвет:'#7dd3fc', правило:'слишком долго любуешься собой' },
 };
 const настроение = { вид:null, сила:0 };
 /* у каждого чувства своя шкала: наполнилась — унесёт в его мир */
-const градусы = { strah:0, zloba:0, len:0, skuka:0, zhadn:0, obida:0 };
-const МИР_ЭМОЦИИ = { strah:'strah', zloba:'zloba', len:'len', skuka:'skuka', zhadn:'zhadn', obida:'obida' };
+const градусы = { strah:0, zloba:0, len:0, skuka:0, zhadn:0, obida:0, zaznai:0 };
+const МИР_ЭМОЦИИ = { strah:'strah', zloba:'zloba', len:'len', skuka:'skuka', zhadn:'zhadn',
+  obida:'obida', zaznai:'zaznai' };
 let термоГотов = false, предупрежденоО = null;
 function рисоватьТермометр() {
   const к = $('термоРяды'); if (!к) return;
@@ -1830,6 +1916,7 @@ function наОстров(id, эмоция) {
     zhadn:  { hemi:0.8,  sun:1.0,  near:30, far:120 },   // 🕳 золотая пыль
     skuka:  { hemi:0.75, sun:0.7,  near:36, far:140 },   // 😑 ровный серый свет
     obida:  { hemi:0.5,  sun:0.45, near:20, far:85  },   // 🌲 сумрак леса
+    zaznai: { hemi:1.1,  sun:1.25, near:40, far:150 },   // ✨ слепящий блеск стекла
   }[id] || { hemi:0.85, sun:1.15, near:60, far:190 };
   hemi.intensity = воздух.hemi; sun.intensity = воздух.sun;
   scene.fog.near = воздух.near; scene.fog.far = воздух.far;
@@ -2079,7 +2166,7 @@ function новыйЦветОгонька() {
 /* ═══════════ мир и цикл ═══════════ */
 построитьГармонию(); построитьЛабиринт();
 построитьПляж(); построитьРеку(); построитьВулкан(); построитьБолото(); построитьПустыню();
-построитьПропасть(); построитьПоляну(); построитьЛес();
+построитьПропасть(); построитьПоляну(); построитьЛес(); построитьЗеркала();
 // 🌉 мосты открыты сразу: Марк хочет ХОДИТЬ по планете, а не смотреть на диски
 мост('garmony', 'strah', true);
 мост('garmony', 'radost', true);
@@ -2089,7 +2176,19 @@ function новыйЦветОгонька() {
 мост('garmony', 'len', true);
 мост('garmony', 'zhadn', true);
 мост('garmony', 'skuka', true);
-мост('strah', 'obida', true);            // 🌲 в обидный лес — через лабиринт страхов
+мост('strah', 'obida', true);            // 🌲 в лес обиды — через лабиринт страхов
+мост('otvrat', 'obida', true);           // 🤢 болото отвращения тоже выходит к лесу обиды
+мост('zhadn', 'zaznai', true);           // ✨ зеркала — соседи пропасти жадности
+/* 🌉 КОЛЬЦО (просьба Марка: «чтобы все острова соединялись друг с другом»):
+   можно обойти планету по кругу, не возвращаясь каждый раз домой */
+мост('radost', 'zhadn', true);
+мост('zhadn',  'zloba', true);
+мост('zloba',  'len',   true);
+мост('len',    'pechal',true);
+мост('pechal', 'skuka', true);
+мост('skuka',  'strah', true);
+мост('strah',  'otvrat',true);
+мост('otvrat', 'radost',true);
 epVisual(()=>epPolish());
 player.неуязв = 0;
 камера(0, true);
@@ -2109,6 +2208,7 @@ function loop(now) {
   if (state === 'play') {
     двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
+    обновитьЗеркала(dt);
     обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt);
     обновитьГостей(dt); обновитьНочь(dt); камера(dt, false);
     обновитьHud();
@@ -2182,7 +2282,7 @@ const Snd = {
   стоп(){ clearInterval(this.таймер); this.тема = null; },
 };
 const МУЗЫКА_ОСТРОВА = { garmony:'calm', strah:'fear', zloba:'anger', pechal:'sad', radost:'calm',
-  otvrat:'fear', len:'sad', zhadn:'anger', skuka:'sad', obida:'fear' };
+  otvrat:'fear', len:'sad', zhadn:'anger', skuka:'sad', obida:'fear', zaznai:'calm' };
 
 /* ═══════════ 🤖 ПУЛЬС — голос планеты (заказ Марка) ═══════════
    Искусственный разум планеты. Предупреждает заранее и подначивает по-доброму. */
@@ -2472,6 +2572,8 @@ window.__dbg = {
     player.x = s.x - 5; player.z = s.z - 5; this.look(s.x, s.z); return s.вид.id; },
   take(){ взять(); return рюкзак.map(i => i.имя); },
   vac(on){ if (!!on !== вихрьВкл) вихрьТумблер(); return вихрьВкл; },
+  get mirrors(){ return зеркала.map(з => ({ x:+з.x.toFixed(1), z:+з.z.toFixed(1),
+    размер:+з.размер.toFixed(2), готово:з.готово })); },
   get bridges(){ return мосты.map(m => m.от + '→' + m.до + (m.открыт ? ' ✓' : ' ✗')); },
   get guests(){ return страхи.filter(s => s.жив && s.где === 'garmony').map(s => s.вид.id); },
   guest(){ привестиГостя(); return this.guests; },
