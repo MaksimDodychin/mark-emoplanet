@@ -134,7 +134,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "27b045ba97";</script>
+  <script>window.__APP_VER = "cd73a0579d";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -189,6 +189,13 @@
   <div id="bagItems"></div>
   <button class="btn" id="bagClose" style="margin-top:8px">Закрыть</button>
 </div></div>
+
+<div class="screen hidden" id="финал">
+  <h1>🔮 ВСЕ СФЕРЫ СОБРАНЫ</h1>
+  <div class="sub" id="финалТекст"></div>
+  <div id="финалСферы" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:640px"></div>
+  <button class="btn" id="финалЕщё">🔁 ИГРАТЬ СНОВА</button>
+</div>
 
 <div class="screen" id="menu">
   <h1>🪐 ЭМОЦИОНАЛЬНАЯ ПЛАНЕТА</h1>
@@ -949,11 +956,40 @@ function обновитьСферы(dt) {
     с.взята = true; с.g.visible = false; огоньки++; обновитьHud(); Snd.победа();
     for (let i = 0; i < 30; i++) искра(с.x, 2.3, с.z, с.цвет);
     рюкзак.push({ em:'🔮', имя:'Сфера ' + ОСТРОВА[id].имя.replace(/^\S+\s/, ''), можноБросить:false });
-    bigMsg('🔮 СФЕРА У ТЕБЯ!\n' + огоньки + ' из 8', 3, '#' + с.цвет.toString(16));
+    const всегоСфер = Object.keys(сферы).length;
+    const собраноСфер = Object.values(сферы).filter(x => x.взята).length;
+    bigMsg('🔮 СФЕРА У ТЕБЯ!\n' + собраноСфер + ' из ' + всегоСфер, 3, '#' + с.цвет.toString(16));
     say('🤖 ПУЛЬС: Неси её к маяку на острове Гармонии.', 8);
     if (огоньки >= 8) открытьДост('mayak');
+    /* 🏁 ЦЕЛЬ ИГРЫ (правило Марка): собрал все сферы — игра пройдена */
+    if (собраноСфер >= всегоСфер) setTimeout(() => показатьФинал(), 1800);
   }
 }
+
+/* 🏁 ФИНАЛ: все сферы собраны */
+function показатьФинал() {
+  if (state !== 'play') return;
+  state = 'финал'; document.body.classList.remove('play');
+  Snd.победа(); setTimeout(() => Snd.победа(), 700);
+  $('финалТекст').innerHTML =
+    'Ты собрал сферу каждого чувства. Ни одно из них ты не победил — ' +
+    'ты просто научился с ними обходиться.<br><br>' +
+    '👁 Со страхом — смотреть, а не бежать.<br>' +
+    '🌋 Со злостью — считать до десяти.<br>' +
+    '🌊 С печалью — греть, а не гнать.<br>' +
+    '🕳 С жадностью — отдавать.<br>' +
+    '👤 С обидой — вспоминать, как было на самом деле.<br><br>' +
+    '<b>Планета снова целая.</b>';
+  const ряд = $('финалСферы'); ряд.innerHTML = '';
+  Object.keys(сферы).forEach(id => {
+    const d = document.createElement('div');
+    d.style.cssText = 'background:#ffffff12;border:2px solid #ffffff26;border-radius:14px;padding:8px 12px;font-weight:800';
+    d.textContent = ОСТРОВА[id] ? ОСТРОВА[id].имя : id;
+    ряд.appendChild(d);
+  });
+  $('финал').classList.remove('hidden');
+}
+$('финалЕщё').onclick = () => location.reload();
 
 /* ═══════ 🏖 ПЛЯЖ РАДОСТИ и 🌊 РЕКА ПЕЧАЛИ — уже не голые диски ═══════ */
 function построитьПляж() {
@@ -2377,6 +2413,10 @@ window.__dbg = {
   get lights(){ return огонькиПечали.map(о => ({ x:+о.x.toFixed(1), z:+о.z.toFixed(1), горит:о.горит })); },
   get task(){ return $('task').textContent; },
   get bridgeOn(){ return наМостуБыл; },
+  get finale(){ return { собрано:Object.values(сферы).filter(x => x.взята).length,
+    всего:Object.keys(сферы).length, экран:!$('финал').classList.contains('hidden') }; },
+  takeAllSpheres(){ Object.keys(сферы).forEach(id => { открытьСферу(id); });
+    return Object.keys(сферы).length; },
   get spheres(){ return Object.keys(сферы).map(k => k + (сферы[k].взята ? ' ✓' : сферы[k].открыта ? ' 🔓' : ' 🔒')); },
   get morph(){ return морф ? { размер:+морф.размер.toFixed(2), правд:правдТут, ждёт:морф.ждёт } : null; },
   think(ok){ if (!морф || !морф.ждёт) return null; ответМысль(!!ok); return правдТут; },
