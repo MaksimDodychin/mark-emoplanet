@@ -22,6 +22,17 @@
   #sparks { right:12px; top:12px; }
   #bagBtn { right:12px; top:52px; pointer-events:auto; cursor:pointer; }
 
+  /* 🌡 ТЕРМОМЕТР ЭМОЦИЙ (заказ Марка): видно все чувства сразу,
+     и что будет, если какое-то переполнится */
+  #термо { position:absolute; right:12px; top:172px; width:158px; background:#0e1424cc;
+    border:2px solid #ffffff2a; border-radius:14px; padding:8px 9px; display:none; }
+  body.play #термо { display:block; }
+  #термо .заг { font-size:11.5px; font-weight:900; opacity:.85; margin-bottom:5px; text-align:center; }
+  #термо .стр { display:flex; align-items:center; gap:5px; margin-bottom:3px; }
+  #термо .эм { font-size:12px; width:58px; font-weight:800; }
+  #термо .тр { flex:1; height:8px; border-radius:5px; background:#ffffff14; overflow:hidden; }
+  #термо .зал { height:100%; width:0%; transition:width .15s linear; }
+  #термо .стр.горячо .эм { text-shadow:0 0 8px currentColor; }
   /* полоска эмоции: наполняется, когда нарушаешь правило острова */
   #moodWrap { position:absolute; left:50%; bottom:14px; transform:translateX(-50%);
     width:min(300px,58vw); display:none; }
@@ -123,7 +134,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "ec9a681e7d";</script>
+  <script>window.__APP_VER = "7c41ae0cf1";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -138,6 +149,7 @@
   <div class="card" id="mapBtn" style="right:12px;top:92px;pointer-events:auto;cursor:pointer">🗺 Карта</div>
   <div class="card" id="inHand" style="left:12px;top:92px;display:none">🖐 В руках: —</div>
   <div class="card" id="camBtn" style="right:12px;top:132px;pointer-events:auto;cursor:pointer">📷 Камера: обычная</div>
+  <div id="термо"><div class="заг">🌡 ТЕРМОМЕТР ЧУВСТВ</div><div id="термоРяды"></div></div>
   <div id="moodWrap">
     <div id="moodName">злость</div>
     <div id="moodTrack"><div id="moodFill"></div></div>
@@ -500,7 +512,7 @@ const ОСТРОВА = {
   len:     { имя:'🏜 Пустыня лени',     x:-58, z:62,  r:26, цвет:0xd9bd7a, небо:0xffe6b0, небоВерх:0xc98a3a },
   zhadn:   { имя:'🕳 Пропасть жадности',x:58,  z:62,  r:26, цвет:0x6b5a2a, небо:0xe0c060, небоВерх:0x6b4a10 },
   skuka:   { имя:'😑 Скучная поляна',   x:-58, z:-62, r:24, цвет:0x8a8f8a, небо:0xc8ccc8, небоВерх:0x7a8080 },
-  obida:   { имя:'🌲 Обидный лес',      x:0,   z:-150,r:28, цвет:0x2f4a34, небо:0x7a8f80, небоВерх:0x2a3a30 },
+  obida:   { имя:'🌲 Лес обиды',        x:0,   z:-150,r:28, цвет:0x2f4a34, небо:0x7a8f80, небоВерх:0x2a3a30 },
 };
 for (const k in ОСТРОВА) ОСТРОВА[k].id = k;        // 🆔 чтобы находить текстуру мира
 let островТут = 'garmony';
@@ -1225,11 +1237,42 @@ function обновитьВулкан(dt) {
 let золото = [], несуЗолота = 0, отданоТут = 0;
 function построитьПропасть() {
   const o = ОСТРОВА.zhadn; дискОстрова(o);
-  const яма = new THREE.Mesh(new THREE.ConeGeometry(12, 7, 30, 1, true),
-    new THREE.MeshStandardMaterial({ color:0x4a3a14, roughness:0.9, side:THREE.DoubleSide }));
-  яма.position.set(o.x, -3.4, o.z); world.add(яма);
-  const блеск = new THREE.Mesh(new THREE.CircleGeometry(6, 26), светящийся(0xffd24a, 0.9));
-  блеск.rotation.x = -Math.PI/2; блеск.position.set(o.x, -6.6, o.z); world.add(блеск);
+  /* 🕳 НАСТОЯЩАЯ БЕЗДНА (просьба Марка: «чтобы было видно, что ты в бездне,
+     а не на островке»). Шахта уходит вниз на сто метров, стены видно изнутри,
+     по ним спускаются уступы, а дно только угадывается по золотому свечению. */
+  const ЯМА_R = 13, ЯМА_H = 110;
+  const шахта = new THREE.Mesh(new THREE.CylinderGeometry(ЯМА_R, ЯМА_R*0.72, ЯМА_H, 40, 6, true),
+    new THREE.MeshStandardMaterial({ color:0x3a2c10, roughness:1, side:THREE.BackSide,
+      emissive:0x140c02, emissiveIntensity:0.6 }));
+  шахта.position.set(o.x, -ЯМА_H/2 + 0.4, o.z); world.add(шахта);
+  /* уступы по спирали — по ним видно, КАК глубоко */
+  for (let i = 0; i < 26; i++) {
+    const a = i*0.9, гл = -3 - i*3.4, рад = ЯМА_R - 1.2 - (i*0.18);
+    const у = new THREE.Mesh(new THREE.BoxGeometry(rnd(2.5, 5), 0.6, rnd(1.6, 3)),
+      new THREE.MeshStandardMaterial({ color:0x4a3a18, roughness:0.95 }));
+    у.position.set(o.x + Math.cos(a)*рад, гл, o.z + Math.sin(a)*рад);
+    у.rotation.y = -a; world.add(у);
+    if (i % 3 === 0) {                              // редкие золотые блики в глубине
+      const б = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), светящийся(0xffd24a, 1.6));
+      б.position.set(o.x + Math.cos(a+0.6)*(рад-1.5), гл + 0.9, o.z + Math.sin(a+0.6)*(рад-1.5));
+      world.add(б);
+    }
+  }
+  /* дно: только зарево, самого дна не видно */
+  const зарево = new THREE.Mesh(new THREE.CircleGeometry(ЯМА_R*0.8, 30), светящийся(0xffb020, 1.2));
+  зарево.rotation.x = -Math.PI/2; зарево.position.set(o.x, -ЯМА_H + 6, o.z); world.add(зарево);
+  const свЯмы = new THREE.PointLight(0xffb020, 9, 60, 1.4);
+  свЯмы.position.set(o.x, -ЯМА_H + 12, o.z); world.add(свЯмы);
+  /* каменный парапет, чтобы не свалиться вниз случайно */
+  for (let i = 0; i < 30; i++) {
+    const a1 = i/30*6.283, a2 = (i+1)/30*6.283, R = ЯМА_R + 1.4;
+    walls.push({ x1:o.x + Math.cos(a1)*R, z1:o.z + Math.sin(a1)*R,
+                 x2:o.x + Math.cos(a2)*R, z2:o.z + Math.sin(a2)*R });
+    const к = new THREE.Mesh(new THREE.BoxGeometry(2.6, rnd(0.9, 1.5), 1.1),
+      new THREE.MeshStandardMaterial({ color:0x6b5a2a, roughness:0.95 }));
+    к.position.set(o.x + Math.cos(a1+0.1)*R, 0.6, o.z + Math.sin(a1+0.1)*R);
+    к.rotation.y = -a1; к.castShadow = к.receiveShadow = true; world.add(к);
+  }
   for (let i = 0; i < 18; i++) {                    // 🏺 сундуки и слитки по краю
     const a = rnd(0,6.3), r = rnd(14, o.r-3);
     const сл = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.7),
@@ -1576,6 +1619,25 @@ const ЭМОЦИИ = {
   obida:  { имя:'обида',  цвет:'#a78bfa', правило:'носишь обиду и не отпускаешь' },
 };
 const настроение = { вид:null, сила:0 };
+/* у каждого чувства своя шкала: наполнилась — унесёт в его мир */
+const градусы = { strah:0, zloba:0, len:0, skuka:0, zhadn:0, obida:0 };
+const МИР_ЭМОЦИИ = { strah:'strah', zloba:'zloba', len:'len', skuka:'skuka', zhadn:'zhadn', obida:'obida' };
+let термоГотов = false;
+function рисоватьТермометр() {
+  const к = $('термоРяды'); if (!к) return;
+  if (!термоГотов) {
+    к.innerHTML = Object.keys(градусы).map(e =>
+      '<div class="стр" id="термо-' + e + '" style="color:' + ЭМОЦИИ[e].цвет + '">' +
+      '<div class="эм">' + ЭМОЦИИ[e].имя + '</div><div class="тр"><div class="зал" ' +
+      'style="background:' + ЭМОЦИИ[e].цвет + '"></div></div></div>').join('');
+    термоГотов = true;
+  }
+  for (const e in градусы) {
+    const стр = document.getElementById('термо-' + e); if (!стр) continue;
+    стр.querySelector('.зал').style.width = clamp(градусы[e]*100, 0, 100) + '%';
+    стр.classList.toggle('горячо', градусы[e] > 0.7);
+  }
+}
 let hearts = 3, огоньки = 0, рюкзак = [], вихрьВзят = false, вихрьВкл = false;
 let state = 'menu', time = 0, стоюT = 0, мостКд = 0, наМостуБыл = false;
 
@@ -1653,13 +1715,29 @@ function наОстров(id, эмоция) {
   else if (id === 'garmony') { $('task').textContent = 'Зажги маяк: принеси огонёк каждой эмоции'; }
 }
 function телепортЗа(эмоция) {
-  const куда = { strah:'strah', zloba:'zloba', len:'garmony', skuka:'garmony' }[эмоция] || 'strah';
-  bigMsg('🌀 ТЕБЯ УНОСИТ…\n' + ЭМОЦИИ[эмоция].правило, 2.6, ЭМОЦИИ[эмоция].цвет);
-  setTimeout(() => { if (state === 'play') наОстров(куда, эмоция); }, 900);
+  const куда = МИР_ЭМОЦИИ[эмоция] || 'strah';
+  if (куда === островТут) { градусы[эмоция] = 0.5; return; }   // уже здесь — не телепортим
+  градусы[эмоция] = 0;
+  bigMsg('🌀 ТЕБЯ УНОСИТ…\n' + ЭМОЦИИ[эмоция].правило, 2.8, ЭМОЦИИ[эмоция].цвет);
+  Snd.урон();
+  setTimeout(() => { if (state === 'play') наОстров(куда, эмоция); }, 1000);
 }
 /* правила: копим эмоцию, переполнилась — телепорт */
 function обновитьПравила(dt) {
   if (state !== 'play') return;
+  /* 🌡 сводим текущее чувство в общий термометр и смотрим, не переполнилось ли */
+  if (настроение.вид && градусы[настроение.вид] !== undefined)
+    градусы[настроение.вид] = clamp(настроение.сила, 0, 1);
+  /* 🕳 жадность: несёшь больше одной вещи — шкала растёт */
+  const лишнее = Math.max(0, рюкзак.length - 1);
+  градусы.zhadn = clamp(градусы.zhadn + (лишнее ? dt*0.05*лишнее : -dt*0.12), 0, 1);
+  /* 😴 лень: долго стоишь где угодно */
+  градусы.len = clamp(градусы.len + (стоюT > 9 ? dt*0.05 : -dt*0.15), 0, 1);
+  for (const e in градусы) {
+    if (градусы[e] >= 1) { телепортЗа(e); break; }
+    if (e !== настроение.вид) градусы[e] = Math.max(0, градусы[e] - dt*0.012);
+  }
+  рисоватьТермометр();
   if (player.скор < 0.6) стоюT += dt; else стоюT = 0;
   if (островТут === 'garmony') {
     if (стоюT > 14 && настроение.сила < 1) {            // 😑 ничего не делаешь — скука
@@ -1881,7 +1959,7 @@ function loop(now) {
   if (state === 'play') {
     двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
-    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); камера(dt, false);
+    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt); камера(dt, false);
     обновитьHud();
   } else {
     camera.position.set(Math.sin(time*0.12)*34, 20, Math.cos(time*0.12)*34);
@@ -1983,6 +2061,31 @@ function пульс(тема, сразу) {
   пульсКд = сразу ? 6 : 14;
   say('🤖 ПУЛЬС: ' + список[Math.floor(Math.random()*список.length)], 6);
   Snd.тон(660, 0.08, 'square', 0.05); setTimeout(() => Snd.тон(880, 0.08, 'square', 0.05), 90);
+}
+
+/* 👤 МОРФ ГОВОРИТ. Он кормится обидой, поэтому подначивает и подкидывает
+   обидные мысли — ровно так, как это делает настоящая обида (заказ Марка). */
+const МОРФ_ФРАЗЫ = [
+  'Настоящие друзья поддержали бы тебя в трудной ситуации…',
+  'А тебя ведь даже не позвали. Странно, правда?',
+  'Они наверняка смеялись, когда ты отвернулся.',
+  'Ты старался, а заметили кого-то другого.',
+  'Можно и не прощать. Держи — так теплее.',
+  'Обида — это как шарф. Я помогу тебе намотать потуже.',
+  'Помнишь тот раз? Вот-вот, я тоже помню. Я всё помню.',
+  'Чем дольше ты злишься, тем больше я. Спасибо.',
+  'Не отвечай им. Просто держи в себе. Мне это нравится.',
+  'А если они просто просили подождать? Нет-нет, не думай об этом.',
+];
+let морфКд = 0;
+function морфГоворит(dt) {
+  if (островТут !== 'obida' || !морф || state !== 'play') return;
+  морфКд -= dt;
+  const d = Math.hypot(морф.x - player.x, морф.z - player.z);
+  if (морфКд > 0 || d > 22 || морф.ждёт) return;
+  морфКд = 9 + Math.random()*5;
+  say('👤 МОРФ: ' + МОРФ_ФРАЗЫ[Math.floor(Math.random()*МОРФ_ФРАЗЫ.length)], 7);
+  Snd.тон(150, 0.5, 'sawtooth', 0.05, 90);
 }
 
 /* ═══════════ 🖥 КАРТОЧКИ СТРАХОВ (заказ Марка: «посмотреть информацию») ═══════════ */
@@ -2319,6 +2422,10 @@ window.__dbg = {
   #mkn-цвета { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:10px; }
   #mkn-цвета div { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid #ffffff33; }
   #mkn-цвета div.mkn-выбр { border-color:#fff; box-shadow:0 0 12px #ffffff88; transform:scale(1.15); }
+  #mkn-шляпы { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:10px; }
+  #mkn-шляпы button { font:700 17px/1 inherit; padding:6px 10px; border-radius:11px; cursor:pointer;
+    border:1.5px solid #ffffff26; background:#ffffff10; }
+  #mkn-шляпы button.mkn-выбр { border-color:#7dd3fc; background:#7dd3fc1a; }
   #mkn-сколько { display:flex; gap:6px; flex-wrap:wrap; }
   #mkn-сколько button, #mkn-выборИгр button { font:800 13px/1 inherit; padding:8px 12px;
     border-radius:11px; cursor:pointer; border:1.5px solid #ffffff26; background:#ffffff10; color:#dbe7ff; }
@@ -2392,7 +2499,10 @@ window.__dbg = {
     <div class="mkn-под" style="text-align:center;margin:4px 0 8px">
       Бегай стрелками или тяни пальцем по комнате
     </div>
+    <div class="mkn-под" id="mkn-ждём" style="text-align:center;margin-bottom:8px"></div>
+    <div class="mkn-под" style="text-align:center;margin-bottom:4px">👕 Гардероб</div>
     <div id="mkn-цвета"></div>
+    <div id="mkn-шляпы"></div>
     <div id="mkn-список"></div>
     <div id="mkn-выбор" style="display:none">
       <h3 style="margin-top:10px">🎮 Во что играем</h3>
@@ -2681,7 +2791,7 @@ window.__dbg = {
     if (d.т === 'комн') {                       // положение и цвет человечка в 2D-комнате
       if (хозяин) разослать(d, откуда);
       const ч = человечки[d.ид] || (человечки[d.ид] = { x:0.5, y:0.6, цx:0.5, цy:0.6, цв:0, имя:d.имя });
-      ч.цx = d.x; ч.цy = d.y; ч.цв = d.цв; ч.имя = d.имя;
+      ч.цx = d.x; ч.цy = d.y; ч.цв = d.цв; ч.имя = d.имя; ч.шляпа = d.шляпа || 0;
       return;
     }
     if (d.т === 'вечеринка') { вечеринка = d.в; показатьВечеринку(); return; }
@@ -2791,6 +2901,10 @@ window.__dbg = {
       с.appendChild(r);
     });
     $('mkn-моёсост').textContent = код ? ('в комнате ' + код + ' · игроков ' + игроки.length) : 'не в комнате';
+    const ж = $('mkn-ждём');
+    if (ж) ж.innerHTML = игроки.length < 2
+      ? '⏳ <b>Жди игроков</b> — скажи другу код <b>' + код + '</b> или пришли ссылку'
+      : '✅ Вас уже <b>' + игроки.length + '</b> · можно начинать';
     обновитьМини();
     слушатели.игроки.forEach(f => f(игроки));
   }
@@ -2802,13 +2916,21 @@ window.__dbg = {
   }
   function показатьКомнату() {
     $('mkn-начало').style.display = 'none';
+    /* ⚠️ Раньше комната открывалась ВНИЗУ длинной страницы, и Марк её просто
+       не видел: «человечек не появляется». Прячем профиль и прокручиваем к комнате. */
+    $('mkn-профиль').style.display = 'none';
+    $('mkn-друзья').style.display = 'none';
     $('mkn-комната').style.display = 'block';
     $('mkn-чаткарта').style.display = 'block';
+    setTimeout(() => { try { $('mkn-экран').scrollTop = 0;
+      $('mkn-комната').scrollIntoView({ block:'start', behavior:'smooth' }); } catch (_) {} }, 60);
     $('mkn-кодтут').textContent = код;
-    рисоватьЦвета(); рисоватьВыборИгр(); показатьВечеринку(); показатьКтоМожет();
+    рисоватьЦвета(); рисоватьШляпы(); рисоватьВыборИгр(); показатьВечеринку(); показатьКтоМожет();
     рисоватьИгроков();
   }
   function выйти() {
+    $('mkn-профиль').style.display = '';
+    $('mkn-друзья').style.display = '';
     try { if (peer) peer.destroy(); } catch (_) {}
     peer = null; связи = []; хозСвязь = null; игроки = []; код = ''; хозяин = false;
     выключитьГолос();
@@ -2858,9 +2980,11 @@ window.__dbg = {
      и переписываются. Потом хозяин выбирает игру или вечеринку из трёх. */
   const ЦВЕТА = ['#ef4444','#f59e0b','#eab308','#22c55e','#14b8a6','#38bdf8',
                  '#8b5cf6','#ec4899','#e5e7eb','#fb923c'];
-  const человечки = {};              // ид → {x, y, цx, цy, цв, имя, фраза, фразаT}
-  let мойЦвет = 0, ходT = 0, тянуКуда = null;
-  try { мойЦвет = +(JSON.parse(localStorage.getItem(КЛЮЧ) || '{}').цвет || 0); } catch (_) {}
+  const ШЛЯПЫ = ['—', '🎩', '👑', '🎀', '🧢', '🐱', '⭐', '🌸'];
+  const человечки = {};              // ид → {x, y, цx, цy, цв, шляпа, имя, фраза, фразаT}
+  let мойЦвет = 0, мояШляпа = 0, ходT = 0, тянуКуда = null;
+  try { const п0 = JSON.parse(localStorage.getItem(КЛЮЧ) || '{}');
+    мойЦвет = +(п0.цвет || 0); мояШляпа = +(п0.шляпа || 0); } catch (_) {}
   let вечеринка = null;
   try { вечеринка = JSON.parse(localStorage.getItem('мк-вечеринка') || 'null'); } catch (_) {}
   /* 🛠 настройки комнаты (заказ Марка): сколько игроков и во что можно играть */
@@ -2909,8 +3033,20 @@ window.__dbg = {
   }
 
   function мойЧеловечек() {
-    if (!человечки[мойИд]) человечки[мойИд] = { x:0.5, y:0.6, цx:0.5, цy:0.6, цв:мойЦвет, имя:профиль.имя };
+    if (!человечки[мойИд]) человечки[мойИд] = { x:0.5, y:0.6, цx:0.5, цy:0.6, цв:мойЦвет,
+      шляпа:мояШляпа, имя:профиль.имя };
     return человечки[мойИд];
+  }
+  function рисоватьШляпы() {
+    const р = $('mkn-шляпы'); if (!р) return;
+    р.innerHTML = '';
+    ШЛЯПЫ.forEach((ш, i) => {
+      const b = document.createElement('button'); b.textContent = ш;
+      if (i === мояШляпа) b.className = 'mkn-выбр';
+      b.onclick = () => { мояШляпа = i; профиль.шляпа = i; сохранитьПрофиль();
+        мойЧеловечек().шляпа = i; рисоватьШляпы(); послатьМесто(true); };
+      р.appendChild(b);
+    });
   }
   function рисоватьЦвета() {
     const р = $('mkn-цвета'); р.innerHTML = '';
@@ -2925,7 +3061,8 @@ window.__dbg = {
   function послатьМесто(сразу) {
     if (!peer || !код) return;
     const я = мойЧеловечек();
-    разослать({ т:'комн', ид:мойИд, имя:профиль.имя, x:+я.x.toFixed(3), y:+я.y.toFixed(3), цв:мойЦвет });
+    разослать({ т:'комн', ид:мойИд, имя:профиль.имя, x:+я.x.toFixed(3), y:+я.y.toFixed(3),
+      цв:мойЦвет, шляпа:мояШляпа });
   }
 
   function рисоватьКомнату(dt) {
@@ -2974,6 +3111,12 @@ window.__dbg = {
       пг.fillStyle = '#2b2233';
       пг.beginPath(); пг.arc(x - r*0.2, y - r*1.0, r*0.09, 0, 7); пг.fill();
       пг.beginPath(); пг.arc(x + r*0.2, y - r*1.0, r*0.09, 0, 7); пг.fill();
+      if (ч.шляпа) {                               // 👕 гардероб
+        пг.font = Math.round(r*1.5) + 'px system-ui';
+        пг.textAlign = 'center'; пг.textBaseline = 'middle';
+        пг.fillText(ШЛЯПЫ[ч.шляпа % ШЛЯПЫ.length], x, y - r*1.85);
+        пг.textBaseline = 'alphabetic';
+      }
       /* имя */
       пг.font = '700 13px system-ui'; пг.textAlign = 'center';
       пг.fillStyle = 'rgba(0,0,0,.55)';
@@ -3002,7 +3145,7 @@ window.__dbg = {
     requestAnimationFrame(цикл);
     const dt = Math.min(0.05, (now - прошлоеВремя)/1000); прошлоеВремя = now;
     if (!$('mkn-экран').classList.contains('mkn-on') || !код) return;
-    const я = мойЧеловечек(); я.имя = профиль.имя; я.цв = мойЦвет;
+    const я = мойЧеловечек(); я.имя = профиль.имя; я.цв = мойЦвет; я.шляпа = мояШляпа;
     let dx = 0, dy = 0;
     if (КЛАВ.ArrowLeft || КЛАВ.KeyA) dx -= 1;
     if (КЛАВ.ArrowRight || КЛАВ.KeyD) dx += 1;
