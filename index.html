@@ -134,7 +134,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "7c41ae0cf1";</script>
+  <script>window.__APP_VER = "27b045ba97";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -1529,15 +1529,15 @@ function заселитьСтрахи() {
     const a = (i/СТРАХИ.length)*6.28 + 0.3, r = 5 + (i % 3)*7.5;
     const mesh = мешСтраха(вид); const x = o.x + Math.cos(a)*r, z = o.z + Math.sin(a)*r;
     mesh.position.set(x, 0, z); world.add(mesh);
-    страхи.push({ вид, mesh, x, z, размер:1, жив:true, пойман:false, взгляд:0, скор:1.6 });
+    страхи.push({ вид, mesh, x, z, размер:1, жив:true, пойман:false, взгляд:0, скор:1.6, где:'strah' });
   });
 }
 /* ⚖️ ЖИВОЙ РАЗМЕР СТРАХА — сердце игры */
 function обновитьСтрахи(dt) {
-  if (островТут !== 'strah') return;
+  if (островТут !== 'strah' && !страхи.some(s => s.жив && s.где === островТут)) return;
   const f = { x: Math.sin(yaw), z: Math.cos(yaw) };       // куда смотрит камера
   for (const s of страхи) {
-    if (!s.жив) continue;
+    if (!s.жив || (s.где || 'strah') !== островТут) continue;   // чужой остров — не трогаем
     const dx = player.x-s.x, dz = player.z-s.z, d = Math.hypot(dx, dz) || 1;
     const кНему = (-dx/d)*f.x + (-dz/d)*f.z;              // смотрю ли Я на него
     const смотрю = кНему > 0.72 && d < 16;
@@ -1607,6 +1607,111 @@ function обновитьИскры(dt) { for (const p of искры) { if (p.t 
   p.m.material.opacity = Math.max(0, p.t); p.m.material.transparent = true;
   if (p.t <= 0) p.m.visible = false; } }
 
+/* ═══════════ 👣 ГОСТИ (заказ Марка) ═══════════
+   Обитатели других миров умеют ходить по мостам. Пришёл страх на Гармонию —
+   ловить его придётся тебе: страхолов есть только у тебя. */
+let гостьКд = 55, гостейПоймано = 0;
+function привестиГостя() {
+  const o = ОСТРОВА.garmony, ц = ОСТРОВА.strah;
+  const a = Math.atan2(ц.x - o.x, ц.z - o.z);
+  const x = o.x + Math.sin(a)*(o.r - 4), z = o.z + Math.cos(a)*(o.r - 4);
+  const вид = СТРАХИ[Math.floor(Math.random()*СТРАХИ.length)];
+  const mesh = мешСтраха(вид); mesh.position.set(x, 0, z); world.add(mesh);
+  страхи.push({ вид, mesh, x, z, размер:1.1, жив:true, пойман:false, взгляд:0, скор:1.4, где:'garmony' });
+  bigMsg('👣 ПО МОСТУ КТО-ТО ПРИШЁЛ', 2.8, '#7dd3fc');
+  say('🤖 ПУЛЬС: К нам гость из Лабиринта страхов. Страхолов есть только у тебя — лови или посмотри ему в глаза.', 10);
+  Snd.тон(320, 0.5, 'sawtooth', 0.08, 140);
+}
+function обновитьГостей(dt) {
+  if (state !== 'play') return;
+  const естьГость = страхи.some(s => s.жив && s.где === 'garmony');
+  if (естьГость) return;
+  if (островТут !== 'garmony') return;
+  гостьКд -= dt;
+  if (гостьКд <= 0) { гостьКд = 80 + Math.random()*50; привестиГостя(); }
+}
+
+/* ═══════════ 🌠 НОЧЬ И ЗВЕЗДОПАД (заказ Марка) ═══════════
+   Иногда наступает ночь, и падают звёзды, исполняющие желания.
+   Заберёшь ВСЕ — жадность унесёт тебя в Пропасть, и вернуться можно,
+   только выложив всё загаданное. Оставишь другим — получишь своё. */
+let ночьT = 0, ночьКд = 95, звёзды = [], светНочи = null, звёздЗабрал = 0;
+function начатьНочь() {
+  ночьT = 50; звёздЗабрал = 0;
+  bigMsg('🌌 НАСТУПАЕТ НОЧЬ', 2.6, '#a7c8ff');
+  say('🤖 ПУЛЬС: Звездопад. Эти звёзды исполняют желания. Забрать все — легко. Оставить другим — трудно.', 10);
+  Snd.музыка('calm');
+  const o = ОСТРОВА[островТут];
+  звёзды.forEach(з => world.remove(з.g)); звёзды = [];
+  for (let i = 0; i < 5; i++) {
+    const a = (i/5)*6.283 + Math.random(), r = 6 + Math.random()*(o.r - 12);
+    const g = new THREE.Group();
+    const ш = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), светящийся(0xfff2b0, 2.2));
+    g.add(ш);
+    const св = new THREE.PointLight(0xffe08a, 4, 14, 1.6); g.add(св);
+    const хвост = new THREE.Mesh(new THREE.ConeGeometry(0.3, 3.5, 8, 1, true),
+      new THREE.MeshBasicMaterial({ color:0xfff2b0, transparent:true, opacity:0.35, depthWrite:false }));
+    хвост.position.y = 1.9; g.add(хвост);
+    g.position.set(o.x + Math.cos(a)*r, 16 + i*3, o.z + Math.sin(a)*r);
+    world.add(g);
+    звёзды.push({ g, x:g.position.x, z:g.position.z, летит:true, взята:false, хвост });
+  }
+}
+function обновитьНочь(dt) {
+  if (state !== 'play') return;
+  if (ночьT <= 0) {
+    ночьКд -= dt;
+    if (ночьКд <= 0) { ночьКд = 150 + Math.random()*60; начатьНочь(); }
+    return;
+  }
+  ночьT -= dt;
+  /* темнеет и светлеет плавно */
+  const к = clamp(Math.min(ночьT, 50 - ночьT)/4, 0, 1);
+  hemi.intensity = Math.max(0.18, hemi.intensity*(1 - dt*2) + (0.85 - к*0.65)*dt*2);
+  sun.intensity = Math.max(0.12, 1.15 - к*1.0);
+  небоЦвета(0x1b2340, 0x070a18);
+  for (const з of звёзды) {
+    if (з.взята) continue;
+    if (з.летит) {
+      з.g.position.y -= dt*16;
+      з.g.rotation.y += dt*3;
+      if (з.g.position.y <= 1.1) { з.g.position.y = 1.1; з.летит = false; з.хвост.visible = false;
+        for (let i = 0; i < 12; i++) искра(з.x, 1.2, з.z, 0xffe08a); Snd.искра(); }
+    } else {
+      з.g.position.y = 1.1 + Math.sin(time*2 + з.x)*0.22;
+      з.g.rotation.y += dt*1.2;
+      if (Math.hypot(з.x - player.x, з.z - player.z) < 2.2) {
+        з.взята = true; world.remove(з.g); звёздЗабрал++;
+        рюкзак.push({ em:'⭐', имя:'Желание', можноБросить:true });
+        Snd.искра(); bigMsg('⭐ ЖЕЛАНИЕ ' + звёздЗабрал + ' / 5', 1.6, '#ffe08a');
+        if (звёздЗабрал >= 5) {
+          bigMsg('🌀 ТЫ ЗАБРАЛ ВСЕ ЖЕЛАНИЯ', 3, '#ffd24a');
+          say('🤖 ПУЛЬС: Все до одного. Жадность не спрашивает — она просто тянет вниз.', 9);
+          setTimeout(() => { if (state === 'play') { наОстров('zhadn', 'zhadn');
+            say('🤖 ПУЛЬС: Чтобы выбраться, придётся выложить всё, что загадал.', 10); } }, 1400);
+          ночьT = 0.1;
+        }
+      }
+    }
+  }
+  if (ночьT <= 0) кончитьНочь();
+}
+function кончитьНочь() {
+  const осталось = звёзды.filter(з => !з.взята).length;
+  звёзды.forEach(з => world.remove(з.g)); звёзды = [];
+  hemi.intensity = 0.85; sun.intensity = 1.15;
+  const o = ОСТРОВА[островТут];
+  небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);
+  if (осталось > 0 && звёздЗабрал > 0) {
+    открытьДост('zvezda');
+    bigMsg('🌠 ТЫ ПОДЕЛИЛСЯ', 2.6, '#a7f3d0');
+    say('🤖 ПУЛЬС: Ты оставил ' + осталось + ' звезду другим. Это и есть щедрость.', 8);
+  } else if (осталось === 5) {
+    say('🤖 ПУЛЬС: Ты не взял ни одной. Иногда это тоже выбор.', 7);
+  }
+  bigMsg('🌅 РАССВЕТ', 2, '#ffe08a');
+}
+
 /* ═══════════ 😤 ЭМОЦИЯ, ПРАВИЛА И ТЕЛЕПОРТЫ ═══════════
    Правило Марка: нарушил правило эмоции — тебя телепортирует на её остров.
    И пока не справился — мост домой не пускает. */
@@ -1622,7 +1727,7 @@ const настроение = { вид:null, сила:0 };
 /* у каждого чувства своя шкала: наполнилась — унесёт в его мир */
 const градусы = { strah:0, zloba:0, len:0, skuka:0, zhadn:0, obida:0 };
 const МИР_ЭМОЦИИ = { strah:'strah', zloba:'zloba', len:'len', skuka:'skuka', zhadn:'zhadn', obida:'obida' };
-let термоГотов = false;
+let термоГотов = false, предупрежденоО = null;
 function рисоватьТермометр() {
   const к = $('термоРяды'); if (!к) return;
   if (!термоГотов) {
@@ -1728,13 +1833,22 @@ function обновитьПравила(dt) {
   /* 🌡 сводим текущее чувство в общий термометр и смотрим, не переполнилось ли */
   if (настроение.вид && градусы[настроение.вид] !== undefined)
     градусы[настроение.вид] = clamp(настроение.сила, 0, 1);
-  /* 🕳 жадность: несёшь больше одной вещи — шкала растёт */
-  const лишнее = Math.max(0, рюкзак.length - 1);
-  градусы.zhadn = clamp(градусы.zhadn + (лишнее ? dt*0.05*лишнее : -dt*0.12), 0, 1);
-  /* 😴 лень: долго стоишь где угодно */
-  градусы.len = clamp(градусы.len + (стоюT > 9 ? dt*0.05 : -dt*0.15), 0, 1);
+  /* 🕳 жадность: считаем ТОЛЬКО то, что взял для себя и можешь положить обратно.
+     ⚠️ Раньше считались любые вещи — а страхолов и сферы носить ОБЯЗАТЕЛЬНО,
+     и Марка уносило в Пропасть просто за то, что он играет. */
+  const своё = рюкзак.filter(п => п && п.можноБросить).length;
+  const лишнее = Math.max(0, своё - 2);
+  градусы.zhadn = clamp(градусы.zhadn + (лишнее ? dt*0.03*лишнее : -dt*0.25), 0, 1);
+  /* 😴 лень: долго стоишь на одном месте */
+  градусы.len = clamp(градусы.len + (стоюT > 25 ? dt*0.035 : -dt*0.25), 0, 1);
   for (const e in градусы) {
     if (градусы[e] >= 1) { телепортЗа(e); break; }
+    if (градусы[e] > 0.7 && предупрежденоО !== e) {      // честно предупреждаем ДО телепорта
+      предупрежденоО = e;
+      bigMsg('⚠️ ' + ЭМОЦИИ[e].имя.toUpperCase() + ' ПЕРЕПОЛНЯЕТСЯ', 2.4, ЭМОЦИИ[e].цвет);
+      say('🤖 ПУЛЬС: ' + ЭМОЦИИ[e].правило + '. Ещё немного — и унесёт.', 6);
+    }
+    if (градусы[e] < 0.5 && предупрежденоО === e) предупрежденоО = null;
     if (e !== настроение.вид) градусы[e] = Math.max(0, градусы[e] - dt*0.012);
   }
   рисоватьТермометр();
@@ -1959,7 +2073,8 @@ function loop(now) {
   if (state === 'play') {
     двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
-    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt); камера(dt, false);
+    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt);
+    обновитьГостей(dt); обновитьНочь(dt); камера(dt, false);
     обновитьHud();
   } else {
     camera.position.set(Math.sin(time*0.12)*34, 20, Math.cos(time*0.12)*34);
@@ -2111,6 +2226,7 @@ const ДОСТИЖЕНИЯ = [
   { id:'mayak',   em:'🔥', имя:'Маяк горит',             desc:'Принести огонёк каждой эмоции и зажечь маяк' },
   { id:'neskuch', em:'😄', имя:'Скучно не бывает',       desc:'Дойти до маяка, ни разу не заскучав' },
   { id:'mosty',   em:'🌉', имя:'Все мосты открыты',      desc:'Открыть дорогу на каждый остров' },
+  { id:'zvezda',  em:'🌠', имя:'Поделился желанием',      desc:'Оставить другим хотя бы одну звезду в звездопаде' },
 ];
 const AK = 'emoplanet_ach_v1';
 let достигнуто = (() => { try { return new Set(JSON.parse(localStorage.getItem(AK) || '[]')); }
@@ -2282,6 +2398,12 @@ window.__dbg = {
   take(){ взять(); return рюкзак.map(i => i.имя); },
   vac(on){ if (!!on !== вихрьВкл) вихрьТумблер(); return вихрьВкл; },
   get bridges(){ return мосты.map(m => m.от + '→' + m.до + (m.открыт ? ' ✓' : ' ✗')); },
+  get guests(){ return страхи.filter(s => s.жив && s.где === 'garmony').map(s => s.вид.id); },
+  guest(){ привестиГостя(); return this.guests; },
+  night(){ начатьНочь(); return { ночь:+ночьT.toFixed(1), звёзд:звёзды.length }; },
+  get stars(){ return звёзды.map(з => ({ x:+з.x.toFixed(1), z:+з.z.toFixed(1),
+    летит:з.летит, взята:з.взята })); },
+  get degrees(){ const o = {}; for (const e in градусы) o[e] = +градусы[e].toFixed(2); return o; },
   map(){ показатьКарту(); return КАРТА_ПОРЯДОК.length; },
   get caught(){ return пойманныеСтрахи.map(f => f.id); },
   get ach(){ return [...достигнуто]; },
