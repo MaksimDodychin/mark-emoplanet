@@ -123,7 +123,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "00960dd493";</script>
+  <script>window.__APP_VER = "4397bacf91";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -223,14 +223,16 @@ renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fd3ff);
 /* 🌤 КУПОЛ НЕБА с градиентом: горизонт светлее зенита — небо перестаёт быть «плоской заливкой» */
+/* ⚠️ Имена в шейдере должны быть ЛАТИНСКИМИ: GLSL не понимает кириллицу,
+   из-за этого шейдер неба вообще не компилировался и градиента не было. */
 const небоМат = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false,
-  uniforms: { верх:{ value:new THREE.Color(0x2f7fd0) }, низ:{ value:new THREE.Color(0xbfe6ff) } },
-  vertexShader: 'varying float h; void main(){ h = normalize(position).y;     gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: 'varying float h; uniform vec3 верх; uniform vec3 низ;     void main(){ gl_FragColor = vec4(mix(низ, верх, clamp(h*1.2+0.15,0.0,1.0)), 1.0); }',
+  uniforms: { topC:{ value:new THREE.Color(0x2f7fd0) }, botC:{ value:new THREE.Color(0xbfe6ff) } },
+  vertexShader: 'varying float h; void main(){ h = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'varying float h; uniform vec3 topC; uniform vec3 botC; void main(){ gl_FragColor = vec4(mix(botC, topC, clamp(h*1.2+0.15,0.0,1.0)), 1.0); }',
 });
 const небо = new THREE.Mesh(new THREE.SphereGeometry(280, 24, 16), небоМат); scene.add(небо);
-function небоЦвета(низ, верх) { небоМат.uniforms.низ.value.setHex(низ); небоМат.uniforms.верх.value.setHex(верх); }
+function небоЦвета(низ, верх) { небоМат.uniforms.botC.value.setHex(низ); небоМат.uniforms.topC.value.setHex(верх); }
 scene.fog = new THREE.Fog(0x8fd3ff, 60, 190);
 const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 400);
 addEventListener('resize', () => {
@@ -1014,30 +1016,39 @@ function построитьРеку() {
 let мячиРадости = [], огонькиПечали = [];
 function обновитьПляжИРеку(dt) {
   if (островТут === 'radost') {
-    let взято = 0;
+    /* ⚠️ Раньше считали только те мячи, что попались ДАЛЬШЕ по списку: возьмёшь
+       последний мяч первым — и пятый не засчитается. Жалоба Марка: «собрал все
+       пять, а сферу не отдают». Теперь пересчитываем ВСЕ и проверяем после цикла. */
+    let новый = false;
     for (const м2 of мячиРадости) {
-      if (м2.взят) { взято++; continue; }
+      if (м2.взят) continue;
       м2.m.position.y = 0.6 + Math.abs(Math.sin(time*3 + м2.x))*0.5;   // мячики подпрыгивают
       if (Math.hypot(м2.x-player.x, м2.z-player.z) > 2.2) continue;
-      м2.взят = true; м2.m.visible = false; взято++;
+      м2.взят = true; м2.m.visible = false; новый = true;
       for (let i = 0; i < 14; i++) искра(м2.x, 1, м2.z, 0xffd24a);
-      Snd.искра(); bigMsg('🏐 ' + взято + ' / 5', 1.3, '#ffd24a');
-      if (взято >= 5) открытьСферу('radost');
+      Snd.искра();
     }
+    const взято = мячиРадости.filter(м2 => м2.взят).length;
+    if (новый) bigMsg('🏐 ' + взято + ' / ' + мячиРадости.length, 1.3, '#ffd24a');
+    if (взято >= мячиРадости.length && мячиРадости.length) открытьСферу('radost');
   }
   if (островТут === 'pechal') {
-    let зажжено = 0;
+    let новый = false;
     for (const о2 of огонькиПечали) {
-      if (о2.горит) { зажжено++; о2.свет.intensity = 7 + Math.sin(time*3)*2; continue; }
+      if (о2.горит) { о2.свет.intensity = 7 + Math.sin(time*3)*2; continue; }
       if (Math.hypot(о2.x-player.x, о2.z-player.z) > 2.2) continue;
-      о2.горит = true; зажжено++;
+      о2.горит = true; новый = true;
       о2.ч.material.color.setHex(0xffd24a); о2.ч.material.emissive.setHex(0xffd24a);
       о2.ч.material.emissiveIntensity = 2;
       for (let i = 0; i < 14; i++) искра(о2.x, 1.7, о2.z, 0xffd24a);
-      Snd.искра(); bigMsg('🕯 ОГОНЁК ' + зажжено + ' / 3', 1.6, '#ffd24a');
-      if (зажжено === 1) say('🤖 ПУЛЬС: Печаль не гонят. Её греют — по одному тёплому воспоминанию.', 8);
-      if (зажжено >= 3) открытьСферу('pechal');
+      Snd.искра();
     }
+    const зажжено = огонькиПечали.filter(о2 => о2.горит).length;
+    if (новый) {
+      bigMsg('🕯 ОГОНЁК ' + зажжено + ' / ' + огонькиПечали.length, 1.6, '#ffd24a');
+      if (зажжено === 1) say('🤖 ПУЛЬС: Печаль не гонят. Её греют — по одному тёплому воспоминанию.', 8);
+    }
+    if (зажжено >= огонькиПечали.length && огонькиПечали.length) открытьСферу('pechal');
   }
 }
 
@@ -1180,7 +1191,7 @@ function построитьВулкан() {
     g.position.set(o.x + Math.cos(a)*r, 0, o.z + Math.sin(a)*r); world.add(g);
     камниСчёта.push({ g, огонь, свет:L, n:i+1, x:g.position.x, z:g.position.z, горит:false });
   }
-  поставитьСферу('zloba', o.x, o.z - 21);
+  поставитьСферу('zloba', o.x + 9, o.z - 12);
 }
 function обновитьВулкан(dt) {
   if (островТут !== 'zloba' || !player) return;
@@ -1330,7 +1341,7 @@ function построитьЛес() {
   g.position.set(o.x, 0, o.z - 4); world.add(g);
   морф = { g, размер:1.6, x:o.x, z:o.z - 4, ждёт:false };
   правдТут = 0;
-  поставитьСферу('obida', o.x, o.z - 17);
+  поставитьСферу('obida', o.x + 8, o.z - 11);
 }
 function обновитьЛес(dt) {
   if (островТут !== 'obida' || !морф || !player) return;
@@ -1566,7 +1577,7 @@ const ЭМОЦИИ = {
 };
 const настроение = { вид:null, сила:0 };
 let hearts = 3, огоньки = 0, рюкзак = [], вихрьВзят = false, вихрьВкл = false;
-let state = 'menu', time = 0, стоюT = 0;
+let state = 'menu', time = 0, стоюT = 0, мостКд = 0, наМостуБыл = false;
 
 function обновитьHud() {
   $('hearts').textContent = '❤️'.repeat(Math.max(0,hearts)) + '🖤'.repeat(Math.max(0,3-hearts));
@@ -1601,6 +1612,7 @@ function наОстров(id, эмоция) {
   const o = ОСТРОВА[id]; островТут = id;
   player.x = o.x + (id === 'garmony' ? 6 : 0); player.z = o.z + (id === 'garmony' ? 10 : o.r-5);
   player.y = 0; player.vy = 0; player.неуязв = 1.2;
+  мостКд = 1.6; наМостуБыл = false;      // ⚠️ иначе мост подхватывает прямо на входе
   scene.background.setHex(o.небо); scene.fog.color.setHex(o.небо);
   небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);          // 🌤 градиент неба под настроение мира
   // ⚠️ правило из «Поместья»: темнота должна быть ЧИТАЕМОЙ, иначе чёрный экран
@@ -1626,6 +1638,14 @@ function наОстров(id, эмоция) {
   if (БЕЗ_МОСТА.has(id)) setTimeout(() => {
     say('🚫 Отсюда моста нет. Выйти можно, только справившись.', 7); }, 2200);
   else if (id === 'garmony') setTimeout(() => пульс('дом', true), 2000);
+  /* ⚠️ Раньше задача писалась только для страха и дома — на остальных островах
+     Марк не понимал, что делать («что мне надо делать, чтобы собрать сферу?»). */
+  if (ЗАДАЧА_МИРА[id]) {
+    $('task').textContent = (сферы[id] && сферы[id].взята) ? '✅ Сфера этого мира уже у тебя'
+      : '🔮 ' + ЗАДАЧА_МИРА[id];
+    if (!сферы[id] || !сферы[id].взята)
+      setTimeout(() => { if (островТут === id) say('🤖 ПУЛЬС: ' + ЗАДАЧА_МИРА[id], 9); }, 2600);
+  }
   if (id === 'strah') { заселитьСтрахи(); if (видКам < 2) сменитьВид(2);
     $('task').textContent = '👁 Не убегай — стой и смотри, и страх станет меньше';
     bigMsg('🕸 ЛАБИРИНТ СТРАХОВ', 2.6, '#7dd3fc');
@@ -1758,8 +1778,16 @@ function двигать(dt) {
   let наМосту = false;
   if (dист > o.r - 1.6) {
     // ⚠️ коридор входа был всего 1.4 м — попасть на мост было почти невозможно (жалоба Марка).
-    const м = мосты.find(m2 => (m2.от === островТут || m2.до === островТут) && m2.открыт &&
-      Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) < 2.6);
+    /* ⚠️ Раньше мост «цеплялся» по БЕСКОНЕЧНОЙ линии: стоишь на другом краю острова,
+       а игра считает, что ты на мосту — снимает ограничение края (уходишь в пустоту)
+       и может утащить на соседний остров. Жалоба Марка: «иду за сферой, а меня
+       телепортирует обратно». Теперь проверяем, что ты и правда В ПРЕДЕЛАХ моста. */
+    const м = мостКд > 0 ? null : мосты.find(m2 => {
+      if (!((m2.от === островТут || m2.до === островТут) && m2.открыт)) return false;
+      if (Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) >= 2.6) return false;
+      const в = (nx-m2.x0)*m2.ux + (nz-m2.z0)*m2.uz;
+      return в > -2.5 && в < m2.len + 2.5;
+    });
     if (м) {
       const вдоль = (nx-м.x0)*м.ux + (nz-м.z0)*м.uz;
       const другой = м.от === островТут ? м.до : м.от;
@@ -1770,8 +1798,12 @@ function двигать(dt) {
         else наОстров(другой);
         нарисоватьГероя(dt); return;
       }
-      const бег = (nx - player.x)*1.7, бегZ = (nz - player.z)*1.7;
-      player.x = nx + бег; player.z = nz + бегZ;       // 🏃 на мосту шаг шире
+      if (!наМостуБыл) {                    // предупреждаем, что ты ступил на мост
+        наМостуБыл = true;
+        say('🌉 Ты на мосту в ' + ОСТРОВА[другой].имя + '. Дойдёшь до конца — перейдёшь.', 3.5);
+      }
+      const бег = (nx - player.x)*0.5, бегZ = (nz - player.z)*0.5;
+      player.x = nx + бег; player.z = nz + бегZ;       // 🏃 на мосту шаг чуть шире
       player.наЗемле = true;
       player.y = -Math.sin(clamp(вдоль/м.len, 0, 1)*Math.PI)*1.5;
       наМосту = true;
@@ -1785,6 +1817,8 @@ function двигать(dt) {
     player.vy -= ГРАВ*dt; player.y += player.vy*dt;
     if (player.y <= 0) { player.y = 0; player.vy = 0; player.наЗемле = true; }
   }
+  if (!наМосту) наМостуБыл = false;
+  if (мостКд > 0) мостКд -= dt;
   if (player.неуязв > 0) player.неуязв -= dt;
   нарисоватьГероя(dt);
 }
@@ -2120,6 +2154,10 @@ window.__dbg = {
   get cam(){ return ВИДЫ[видКам].имя; },
   setCam(i){ сменитьВид(i); return ВИДЫ[видКам].имя; },
   get stones(){ return { счёт:счётЗлобы, всего:камниСчёта.length }; },
+  get balls(){ return мячиРадости.map(м => ({ x:+м.x.toFixed(1), z:+м.z.toFixed(1), взят:м.взят })); },
+  get lights(){ return огонькиПечали.map(о => ({ x:+о.x.toFixed(1), z:+о.z.toFixed(1), горит:о.горит })); },
+  get task(){ return $('task').textContent; },
+  get bridgeOn(){ return наМостуБыл; },
   get spheres(){ return Object.keys(сферы).map(k => k + (сферы[k].взята ? ' ✓' : сферы[k].открыта ? ' 🔓' : ' 🔒')); },
   get morph(){ return морф ? { размер:+морф.размер.toFixed(2), правд:правдТут, ждёт:морф.ждёт } : null; },
   think(ok){ if (!морф || !морф.ждёт) return null; ответМысль(!!ok); return правдТут; },
@@ -2459,6 +2497,7 @@ window.__dbg = {
     { id:'party',     имя:'Вечеринка',    em:'🎉', вместе:true  },
     { id:'draw',      имя:'Рисовалка',    em:'🎨', вместе:true  },
     { id:'ghostlife', имя:'Жизнь призрака', em:'👻', вместе:false },
+    { id:'dustmaze',  имя:'Пыльный мститель', em:'🌫', вместе:false },
     { id:'phantom',   имя:'Поместье',     em:'👻', вместе:false },
     { id:'emoplanet', имя:'Эмоциональная планета', em:'🪐', вместе:false },
     { id:'technobunt',имя:'Технобунт',    em:'⏻', вместе:false },
