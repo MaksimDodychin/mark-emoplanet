@@ -20,6 +20,9 @@
   #place  { left:12px; top:52px; }
   #task   { left:50%; top:12px; transform:translateX(-50%); max-width:74vw; white-space:normal; text-align:center; }
   #sparks { right:12px; top:12px; }
+  /* 🧭 КОМПАС ЭМОЦИЙ (желание со звезды): стрелка на сферу этого мира */
+  #компас { left:12px; top:134px; display:none; align-items:center; gap:8px; }
+  #компас .стр { display:inline-block; font-size:22px; line-height:1; transition:transform .12s linear; }
   #bagBtn { right:12px; top:52px; pointer-events:auto; cursor:pointer; }
 
   /* 🌡 ТЕРМОМЕТР ЭМОЦИЙ (заказ Марка): видно все чувства сразу,
@@ -160,7 +163,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "68c06d91c7";</script>
+  <script>window.__APP_VER = "4f3535991c";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -175,6 +178,7 @@
   <div class="card" id="mapBtn" style="right:12px;top:92px;pointer-events:auto;cursor:pointer">🗺 Карта</div>
   <div class="card" id="emoBtn" style="right:12px;top:172px;pointer-events:auto;cursor:pointer">😀 Эмоция</div>
   <div class="card" id="inHand" style="left:12px;top:92px;display:none">🖐 В руках: —</div>
+  <div class="card" id="компас"><span class="стр">⬆️</span><span id="компасТ">сфера</span></div>
   <div class="card" id="camBtn" style="right:12px;top:132px;pointer-events:auto;cursor:pointer">📷 Камера: обычная</div>
   <div id="термо"><div class="заг">🌡 ТЕРМОМЕТР ЧУВСТВ</div><div id="термоРяды"></div></div>
   <div id="moodWrap">
@@ -488,6 +492,232 @@ function epPolish() {
   const normal=epTexture('water');normal.repeat.set(42,42);море.material.normalMap=normal;море.material.normalScale.set(.18,.18);море.material.roughness=.28;море.material.metalness=.12;море.material.color.setHex(0x3c99b3);море.material.envMapIntensity=.65;море.material.needsUpdate=true;
   const faces=[];for(let i=0;i<6;i++){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,128);gr.addColorStop(0,'#adc7e1');gr.addColorStop(.6,'#f4e4c5');gr.addColorStop(1,'#4c6170');g.fillStyle=gr;g.fillRect(0,0,128,128);faces.push(c);}const cube=new THREE.CubeTexture(faces);cube.colorSpace=THREE.SRGBColorSpace;cube.needsUpdate=true;const pmrem=new THREE.PMREMGenerator(renderer);epArt.environment=pmrem.fromCubemap(cube);scene.environment=epArt.environment.texture;cube.dispose();pmrem.dispose();
 }
+
+/* Nature materials, September 2026. Visual geometry retains the original camera
+   raycasts; gameplay, island routes and collision segments remain authoritative. */
+const epNature = { clock:{value:0}, trees:0, bridges:0, smoke:[], lava:[] };
+function epMerge(parts) {
+  const positions=[], normals=[], uvs=[];
+  for(const source of parts){
+    const g=source.index?source.toNonIndexed():source;
+    positions.push(...g.attributes.position.array); normals.push(...g.attributes.normal.array);
+    uvs.push(...g.attributes.uv.array); if(g!==source)g.dispose();source.dispose();
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  g.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+  g.computeBoundingSphere(); return g;
+}
+function epLimb(a,b,r1,r2){
+  const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b),direction=end.clone().sub(start);
+  const g=new THREE.CylinderGeometry(r2,r1,direction.length(),7,1);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize()));
+  g.translate(...start.add(end).multiplyScalar(.5).toArray());return g;
+}
+function epNatureMap(kind){
+  const key='nature-'+kind;if(epArt.maps.has(key))return epArt.maps.get(key);
+  const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+  if(kind==='leaves'){
+    // Broad, tapered leaves with a shaded midrib and fine side veins.
+    const gr=g.createLinearGradient(35,100,220,150);gr.addColorStop(0,'#879e6b');gr.addColorStop(.44,'#d9e5b4');gr.addColorStop(.52,'#aabc8c');gr.addColorStop(1,'#d0dbad');
+    g.fillStyle=gr;g.beginPath();g.moveTo(128,12);g.bezierCurveTo(105,48,43,60,51,127);g.bezierCurveTo(54,173,108,216,128,237);g.bezierCurveTo(155,205,211,178,205,121);g.bezierCurveTo(201,66,151,43,128,12);g.fill();
+    g.strokeStyle='rgba(78,97,51,.45)';g.lineWidth=2;g.beginPath();g.moveTo(128,20);g.lineTo(128,247);g.stroke();
+    g.lineWidth=.8;for(let y=59;y<207;y+=22){g.beginPath();g.moveTo(128,y+19);g.quadraticCurveTo(95,y+7,70,y-5);g.moveTo(128,y+19);g.quadraticCurveTo(162,y+4,189,y-9);g.stroke();}
+  }else if(kind==='bark'){
+    g.fillStyle='#a59981';g.fillRect(0,0,256,256);
+    for(let i=0;i<210;i++){
+      const x=Math.random()*256;g.strokeStyle=i%3?'rgba(38,29,21,.25)':'rgba(243,229,188,.25)';g.lineWidth=.6+Math.random()*3;
+      g.beginPath();for(let y=0;y<=256;y+=3)g.lineTo(x+Math.sin(y*.035+i)*2+Math.sin(y*.13+i)*.7,y);g.stroke();
+    }
+    for(let i=0;i<1800;i++){g.fillStyle=i%2?'#48413944':'#f2e4c433';g.fillRect(Math.random()*256,Math.random()*256,1,1+Math.random()*5);}
+  }else if(kind==='basalt'){
+    const hash=(x,y,n)=>{let k=Math.imul(((x%n)+n)%n+374761393,668265263)^Math.imul(((y%n)+n)%n+1274126177,1597334677);k=Math.imul(k^(k>>>13),1274126177);return ((k^(k>>>16))>>>0)/4294967296;};
+    const noise=(x,y,n)=>{const ix=Math.floor(x),iy=Math.floor(y);let fx=x-ix,fy=y-iy;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);const a=hash(ix,iy,n)*(1-fx)+hash(ix+1,iy,n)*fx,b=hash(ix,iy+1,n)*(1-fx)+hash(ix+1,iy+1,n)*fx;return a*(1-fy)+b*fy;};
+    const im=g.createImageData(256,256);
+    for(let y=0;y<256;y++)for(let x=0;x<256;x++){
+      const i=(y*256+x)*4;let n=0,w=.55;
+      for(const size of [4,8,16,32,64]){n+=(noise(x/256*size,y/256*size,size)-.5)*w;w*=.55;}
+      const value=148+n*165+(Math.random()-.5)*28;
+      im.data[i]=value;im.data[i+1]=value*.97;im.data[i+2]=value*.94;im.data[i+3]=255;
+    }g.putImageData(im,0,0);
+  }else if(kind==='smoke'){
+    const gr=g.createRadialGradient(128,128,2,128,128,124);gr.addColorStop(0,'rgba(210,202,194,.72)');gr.addColorStop(.35,'rgba(158,150,145,.5)');gr.addColorStop(1,'rgba(100,100,100,0)');g.fillStyle=gr;g.fillRect(0,0,256,256);
+  }
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+  if(kind==='bark'||kind==='basalt')t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());epArt.maps.set(key,t);return t;
+}
+function epLeafGeometry(radius){
+  const parts=[];
+  for(let i=0;i<180;i++){
+    const az=i*2.399963, v=1-2*(i+.5)/180,rr=radius*(.65+Math.random()*.4),rad=Math.sqrt(1-v*v);
+    const leaf=new THREE.PlaneGeometry(radius*(.22+Math.random()*.12),radius*(.30+Math.random()*.17));
+    leaf.rotateX((Math.random()-.5)*2.6);leaf.rotateY(az);leaf.rotateZ((Math.random()-.5)*1.8);
+    leaf.translate(Math.cos(az)*rad*rr,v*rr*.9,Math.sin(az)*rad*rr);parts.push(leaf);
+  }
+  return epMerge(parts);
+}
+function epNaturalTrees(){
+  const bark=new THREE.MeshStandardMaterial({color:0x85745b,map:epNatureMap('bark'),bumpMap:epNatureMap('bark'),bumpScale:.1,roughness:1});
+  const leafMaterials=new Map();
+  for(const tree of world.children.filter(g=>g.isGroup&&g.children.length===4&&g.children[0].material===M.дерево)){
+    const trunk=tree.children[0],h=trunk.geometry.parameters.height/.62,parts=[];
+    trunk.material=bark;
+    const crowns=tree.children.slice(1);
+    for(const crown of crowns){
+      const color=crown.material.color.getHex();let mat=leafMaterials.get(color);
+      if(!mat){mat=new THREE.MeshStandardMaterial({color,map:epNatureMap('leaves'),alphaTest:.42,side:THREE.DoubleSide,roughness:.94});leafMaterials.set(color,mat);
+        mat.onBeforeCompile=shader=>{shader.uniforms.epNatureTime=epNature.clock;
+          shader.vertexShader='uniform float epNatureTime;\n'+shader.vertexShader;
+          shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.x += sin(epNatureTime*1.15 + position.y*2.7 + modelMatrix[3].x*.19)*.045; transformed.z += sin(epNatureTime*.8+position.x*3.0)*.025;');};
+        mat.customProgramCacheKey=()=> 'ep-leaf-wind-v1';
+      }
+      const r=crown.geometry.parameters.radius;epVisualGeometry(crown,epLeafGeometry(r));crown.material=mat;
+      // Alpha-tested depth materials let sunlight through the gaps between leaves.
+      crown.customDepthMaterial=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,map:mat.map,alphaTest:.42,side:THREE.DoubleSide});
+      const end=crown.position;parts.push(epLimb([0,h*.34,0],[end.x,h*.73,end.z],h*.055,h*.018));
+      for(let j=0;j<4;j++){const a=j*Math.PI/2+.5;parts.push(epLimb([end.x,end.y-r*.35,end.z],[end.x+Math.cos(a)*r*.8,end.y+r*.1,end.z+Math.sin(a)*r*.8],h*.022,h*.004));}
+    }
+    for(let j=0;j<5;j++){const a=j*1.2566;parts.push(epLimb([0,h*.13,0],[Math.cos(a)*h*.2,.03,Math.sin(a)*h*.2],h*.047,h*.011));}
+    epDetail(tree,epMerge(parts),bark,0,0,0);epNature.trees++;
+  }
+  // Fallen trunks and the burnt trees use the same bark structure.
+  for(const obj of world.children){if(!obj.isMesh||obj.geometry.type!=='CylinderGeometry')continue;
+    const color=obj.material.color?.getHex();if(color===0x3f2f22||color===0x2a1f1c){obj.material.map=epNatureMap('bark');obj.material.bumpMap=obj.material.map;obj.material.bumpScale=.09;obj.material.needsUpdate=true;}
+  }
+}
+function epNaturalBridges(){
+  const rope=epMat('cloth',0xa18d64,1),iron=epMat('stone',0x555451,.62,.6),timber=epMat('wood',0x9c8261,.96);
+  const stone=epMat('stone',0x787973,.96),boardMats=[0xab9274,0x998165,0xb8a181,0x887156].map(c=>epMat('wood',c,.94));
+  for(const bridge of мосты){
+    const g=bridge.mesh,{ux,uz,len}=bridge,parts=[],bolts=[];
+    const boards=g.children.filter(m=>m.geometry?.type==='BoxGeometry'&&m.geometry.parameters.height===.18);
+    const step=len/(boards.length-1);
+    boards.forEach((board,i)=>{
+      // The deck spans the walkable width; small gaps follow the sagging path.
+      epVisualGeometry(board,new THREE.BoxGeometry(2.6,.18,step*.96));board.rotation.y=Math.atan2(ux,uz);
+      board.material=boardMats[i%boardMats.length];
+      for(const side of [-1,1]){const bolt=new THREE.SphereGeometry(.038,5,4);bolt.scale(1,.4,1);
+        bolt.translate(board.position.x-uz*side*1.03,board.position.y+.095,board.position.z+ux*side*1.03);bolts.push(bolt);}
+    });
+    for(const side of [-1,1]){
+      const bottom=[],mid=[];
+      for(let i=0;i<=24;i++){const t=i/24,y=-Math.sin(t*Math.PI)*1.5;
+        bottom.push([ux*len*t-uz*side*1.16,y-.22,uz*len*t+ux*side*1.16]);
+        mid.push([ux*len*t-uz*side*1.2,y+.58,uz*len*t+ux*side*1.2]);}
+      epTube(g,bottom,.085,rope);epTube(g,mid,.026,rope);
+      for(let i=0;i<boards.length;i+=2){const t=i/(boards.length-1),y=-Math.sin(t*Math.PI)*1.5,x=ux*len*t-uz*side*1.2,z=uz*len*t+ux*side*1.2;
+        for(let j=0;j<3;j++){const knot=new THREE.TorusGeometry(.091,.019,4,9);knot.rotateX(Math.PI/2);knot.translate(x,y+.96+j*.033,z);parts.push(knot);}}
+      for(const end of [0,len]){
+        const x=ux*end-uz*side*1.6,z=uz*end+ux*side*1.6;
+        epDetail(g,new THREE.CylinderGeometry(.4,.49,.45,8),stone,x,-.22,z);
+        epDetail(g,epLimb([x,.3,z],[x+ux*.9,2.95,z+uz*.9],.055,.055),iron,0,0,0);
+      }
+    }
+    for(const m of g.children){if(m.geometry?.type==='CylinderGeometry'&&m.geometry.parameters.height>1)m.material=timber;
+      if(m.geometry?.type==='BoxGeometry'&&m.geometry.parameters.width===3.6){m.rotation.y=Math.atan2(ux,uz);m.material=timber;}
+      if(m.geometry?.type==='TubeGeometry'&&m.geometry.parameters.radius===.05)m.material=rope;}
+    if(parts.length)epDetail(g,epMerge(parts),rope,0,0,0);if(bolts.length)epDetail(g,epMerge(bolts),iron,0,0,0);
+    epNature.bridges++;
+  }
+}
+function epVolcanoRadius(y,a){
+  const t=clamp(y/15,0,1),r=13-9*t+.6*Math.sin(t*Math.PI);
+  return r+(Math.sin(a*9+t*3)*.46+Math.sin(a*17-t*4)*.2+Math.sin(a*5)*.3)*Math.sin(Math.PI*(.12+t*.85));
+}
+function epVolcanoBody(){
+  const pos=[],uv=[],indices=[],segments=96,rings=40;
+  for(let j=0;j<=rings;j++)for(let i=0;i<=segments;i++){
+    const a=i/segments*Math.PI*2,y=j/rings*15,r=epVolcanoRadius(y,a);
+    pos.push(Math.cos(a)*r,y-7.5,Math.sin(a)*r);uv.push(i/segments*5,j/rings*3);
+    if(j<rings&&i<segments){const k=j*(segments+1)+i;indices.push(k,k+segments+1,k+1,k+1,k+segments+1,k+segments+2);}
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
+}
+function epMoltenMaterial(color){
+  const mat=new THREE.MeshStandardMaterial({color,emissive:0xff5411,emissiveIntensity:1.65,roughness:.68,side:THREE.DoubleSide});
+  mat.onBeforeCompile=shader=>{
+    shader.uniforms.epNatureTime=epNature.clock;
+    shader.vertexShader='varying vec3 epLavaPosition;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nepLavaPosition = position;');
+    shader.fragmentShader='uniform float epNatureTime; varying vec3 epLavaPosition;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+      vec3 p = epLavaPosition;
+      float flow = p.y * 3.2 + epNatureTime * .75;
+      float wave = sin(p.x*4.1 + sin(flow)*1.5 + p.z*2.9) * sin(flow + sin(p.z*5.0));
+      float hot = smoothstep(-.1,.62,wave);
+      float crust = smoothstep(.05,.35,abs(wave));
+      diffuseColor.rgb = mix(vec3(.095,.027,.012), vec3(.68,.12,.015),hot);
+      totalEmissiveRadiance *= mix(.045,1.4,hot) + (1.0-crust)*.35;
+      totalEmissiveRadiance += vec3(1.0,.31,.015)*pow(hot,3.0)*.6;`);
+  };mat.customProgramCacheKey=()=> 'ep-molten-rock-v1';return mat;
+}
+function epNaturalVolcano(){
+  const o=ОСТРОВА.zloba,basalt=new THREE.MeshStandardMaterial({color:0x716965,map:epNatureMap('basalt'),bumpMap:epNatureMap('basalt'),bumpScale:.28,roughness:.98});
+  const cone=world.children.find(m=>m.isMesh&&m.geometry.type==='ConeGeometry'&&m.geometry.parameters.height===16&&m.position.z===o.z);
+  if(cone){epVisualGeometry(cone,epVolcanoBody());cone.material=basalt;}
+  const crater=world.children.find(m=>m.isMesh&&m.geometry.type==='CylinderGeometry'&&m.geometry.parameters.radiusTop===3.4&&m.position.z===o.z);
+  if(crater){
+    const profile=[[4, -.48],[4.18,-.1],[3.94,.5],[3.61,.97],[3.34,.81],[3.12,.43],[3.04,-.55]];
+    const rim=new THREE.LatheGeometry(profile.map(p=>new THREE.Vector2(...p)),96),p=rim.attributes.position;
+    for(let i=0;i<p.count;i++){const a=Math.atan2(p.getZ(i),p.getX(i));p.setY(i,p.getY(i)+Math.sin(a*7)*.12+Math.cos(a*13)*.08);}rim.computeVertexNormals();
+    epVisualGeometry(crater,rim);crater.material=basalt;crater.castShadow=crater.receiveShadow=true;
+  }
+  let stream=0;
+  for(const mesh of world.children){
+    if(mesh.geometry?.type!=='TubeGeometry'||mesh.geometry.parameters.radius!==.42||mesh.material.emissive?.getHex()!==0xff4d1a)continue;
+    const a0=stream++/7*6.28+.2,positions=[],uv=[],indices=[];
+    for(let j=0;j<=64;j++){
+      const t=j/64,y=15.5*(1-t)+.18,a=a0+t*.5+Math.sin(t*14+stream)*.025,r=epVolcanoRadius(Math.min(15,y),a)+.10;
+      const half=(.22+.24*t)*(1+.2*Math.sin(t*31+stream));
+      for(const s of [-1,1]){const angle=a+s*half/r;positions.push(o.x+Math.cos(angle)*r,y,o.z+Math.sin(angle)*r);uv.push((s+1)/2,t*7);}
+      if(j<64){const k=j*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
+    }
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();
+    epVisualGeometry(mesh,geo);mesh.material=epMoltenMaterial(0xff6a22);epNature.lava.push(mesh);
+  }
+  for(const m of [вулканЛава,лаваРазлив]){m.material=epMoltenMaterial(0xff702b);epNature.lava.push(m);}
+  const smokeMap=epNatureMap('smoke');
+  for(let i=0;i<14;i++){
+    const mat=new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:.2,depthWrite:false,color:0x665d57});
+    const puff=new THREE.Sprite(mat);puff.raycast=()=>{};puff.userData.epDetail=true;world.add(puff);epNature.smoke.push({mesh:puff,phase:i/14});
+  }
+  const count=64,positions=new Float32Array(count*3),embers=new THREE.BufferGeometry();embers.setAttribute('position',new THREE.BufferAttribute(positions,3));
+  const spark=new THREE.Points(embers,new THREE.PointsMaterial({color:0xffbb55,size:.065,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
+  spark.position.set(o.x,16.1,o.z);spark.frustumCulled=false;world.add(spark);epNature.embers=spark;
+}
+function epNaturePolish(){
+  epNaturalTrees();epNaturalBridges();epNaturalVolcano();
+  // Keep a fixed light budget. Source lights retain their game-controlled
+  // intensity and visibility, while only nearby lights enter the GPU shader.
+  epNature.lightPool=Array.from({length:10},()=>{const l=new THREE.PointLight(0xffffff,0,1);l.userData.epLightPool=true;scene.add(l);return l;});
+  epNature.sources=[];epNature.nextLightScan=0;
+}
+function epNatureAnimate(t){
+  epNature.clock.value=t;const o=ОСТРОВА.zloba,near=Math.hypot(camera.position.x-o.x,camera.position.z-o.z)<190;
+  if(t>=epNature.nextLightScan){
+    epNature.sources=[];scene.traverse(l=>{if(l.isPointLight&&!l.userData.epLightPool){l.layers.set(31);epNature.sources.push({light:l,position:new THREE.Vector3(),score:0});}});
+    epNature.nextLightScan=t+1;
+  }
+  for(const source of epNature.sources){const l=source.light;source.score=0;if(l.intensity<=0)continue;
+    let visible=true;for(let p=l;p;p=p.parent)if(!p.visible){visible=false;break;}if(!visible)continue;
+    l.getWorldPosition(source.position);const d=source.position.distanceTo(camera.position);
+    source.score=l.intensity/(1+d*d)*(l.distance===0?1:Math.max(0,1-d/(l.distance+24)));
+  }
+  epNature.sources.sort((a,b)=>b.score-a.score);
+  epNature.lightPool.forEach((light,i)=>{const source=epNature.sources[i];if(!source||source.score<=0){light.intensity=0;return;}
+    light.position.copy(source.position);light.color.copy(source.light.color);light.intensity=source.light.intensity;light.distance=source.light.distance;light.decay=source.light.decay;
+  });
+  for(const {mesh,phase} of epNature.smoke){mesh.visible=near;if(!near)continue;
+    const life=(t*.038+phase)%1,r=1.8+life*7;
+    mesh.position.set(o.x+life*5+Math.sin(phase*22+t*.09)*1.3,17+life*24,o.z+Math.cos(phase*27)*1.7+life*2);
+    mesh.scale.set(r*1.3,r,1);mesh.material.opacity=Math.sin(life*Math.PI)*.42;mesh.material.rotation=phase*6+life*.6;
+  }
+  if(epNature.embers){epNature.embers.visible=near;if(near){const p=epNature.embers.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){const life=(t*.16+i/p.count)%1,a=i*2.4;p.setXYZ(i,Math.cos(a)*(.6+life*2),life*8,Math.sin(a)*(.6+life*2));}p.needsUpdate=true;}}
+}
+
 
 const world = new THREE.Group(); scene.add(world);
 const walls = [];          // коллизии-отрезки {x1,z1,x2,z2}
@@ -841,7 +1071,7 @@ function человечек() {
     ноги.push(бедро);
   }
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  return { g, ноги, руки, рот, глаза, брови, грудь, голова, причёска, чёлка, волосы, куртка };
+  return { g, ноги, руки, рот, глаза, брови, грудь, голова, причёска, чёлка, волосы, куртка, обувь };
 }
 const герой = человечек(); world.add(герой.g);
 /* 🖐 ПРЕДМЕТ В РУКАХ (просьба Марка): его видно и на человечке, и в HUD, и в рюкзаке. */
@@ -954,6 +1184,25 @@ function взятьВРуки(предмет) {
       const щ = модельЩётки(); щ.scale.setScalar(0.72);
       щ.position.set(0, -0.35, 1.25); щ.rotation.x = 0.35;
       м.g.add(щ);
+    }
+    /* 🫙 банка НАПОЛНЯЕТСЯ: сколько страхов внутри — настолько поднимается фиолетовый дым */
+    const доля = вБанке.length / вместимостьБанки();
+    if (доля > 0) {
+      const дым = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.46*доля, 16),
+        светящийся(доля >= 1 ? 0xf472b6 : 0xa78bfa, 1.4));
+      дым.material.transparent = true; дым.material.opacity = 0.75;
+      дым.position.y = 0.66 + 0.23*доля; м.g.add(дым);
+    }
+    /* 🫙 НАБОР БАНОК (желание Марка): три запасные банки пристёгнуты к корпусу */
+    if (естьЖ('banki')) {
+      const стекло = new THREE.MeshStandardMaterial({ color:0xbfe8ff, transparent:true, opacity:0.4,
+        roughness:0.05, metalness:0.3 });
+      [[-0.36, 0.1], [-0.2, -0.3], [0.12, -0.36]].forEach(([bx, bz]) => {
+        const б = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.28, 12), стекло);
+        б.position.set(bx, 0.4, bz); м.g.add(б);
+        const кр = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 12), M.металл);
+        кр.position.set(bx, 0.56, bz); м.g.add(кр);
+      });
     }
     герой.g.add(м.g); мешВРуках = м.g;
   } else if (предмет && предмет.желание) {
@@ -2486,7 +2735,7 @@ function обновитьСтрахи(dt) {
       if ((s.ворчит = (s.ворчит || 0) - dt) <= 0) { s.ворчит = 7;
         say('👁 ' + s.вид.em + ' ' + s.вид.имя + ' смотрит в ответ. Фобию взглядом не взять — нужен 🪤 СТРАХОЛОВ.', 6); }
     } else if (смотрю && стою) {                            // 👁 стоишь и смотришь — усыхает
-      s.размер = Math.max(0.18, s.размер - dt*0.42);
+      s.размер = Math.max(0.18, s.размер - dt*0.42*(естьЖ('fonarik') ? 2 : 1));   // 🔦 в луче — вдвое
       s.взгляд = Math.min(1, s.взгляд + dt*0.7);
       if (s.размер <= 0.2) { победитьСтрах(s); continue; }
     } else if (player.скор > 3.4 && d < 22) {              // 🏃 убегаешь — раздувается
@@ -2523,13 +2772,17 @@ function победитьСтрах(s, ловушкой) {
   for (let i = 0; i < 18; i++) искра(s.x, 1 + Math.random()*1.5, s.z, 0xffe08a);
   if (ловушкой) {
     счёт.ловушкой++; открытьДост('lovec');
-    пойманныеСтрахи.push(s.вид);                    // 🖥 выгружается в компьютер на острове
-    bigMsg('🪤 ' + s.вид.em + ' В БАНКЕ СТРАХОЛОВА', 2, '#a78bfa');
+    вБанке.push(s.вид);                             // 🫙 сидит в банке, пока не выгрузишь дома
+    bigMsg('🪤 ' + s.вид.em + ' В БАНКЕ СТРАХОЛОВА\n🫙 ' + вБанке.length + ' из ' + вместимостьБанки(), 2, '#a78bfa');
+    if (вРуках && вРуках.имя === 'СТРАХОЛОВ') взятьВРуки(вРуках);   // банка в руках наполнилась
+    обновитьСнаряжение();
     if (s.вид.фобия) {
       say('👁 Фобия поймана. Её и нельзя было победить взглядом — только так.', 6);
-      const всеФобии = СТРАХИ.filter(в => в.фобия);
-      if (всеФобии.every(в => пойманныеСтрахи.some(п => п.id === в.id))) открытьДост('fobii');
+      const всеФобии = СТРАХИ.filter(в => в.фобия), все = [...пойманныеСтрахи, ...вБанке];
+      if (всеФобии.every(в => все.some(п => п.id === в.id))) открытьДост('fobii');
     } else say('Страх убран, но ты с ним не справился — огонёк за него не дадут.', 5);
+    if (вБанке.length >= вместимостьБанки() && s.где !== 'garmony')
+      say('🤖 ПУЛЬС: Банка полна! Отнеси страхи домой, на Гармонию, — там они выгрузятся в компьютер.', 9);
   } else {
     bigMsg('👁 ' + s.вид.em + ' ' + s.вид.имя.toUpperCase() + ' ПОБЕЖДЁН!\nты не убежал', 2.6, '#ffe08a');
     Snd.победа(); пульс('победа', true);
@@ -2627,6 +2880,13 @@ function обновитьМорфаГостя(dt) {
     м.g.position.set(м.x, Math.sin(time*1.2)*0.12, м.z);
     м.g.scale.setScalar(м.размер);
     м.g.lookAt(player.x, 0, player.z);
+    /* 🤖 ПЫЛИК чует Морфа: под чужим именем тот и двух секунд не продержится */
+    if (!м.раскрыт && пылик && (м.пыликT = (м.пыликT || 0) + dt) > 2.5) {
+      м.раскрыт = true; пылик.пищит = 3;
+      bigMsg('🤖 ПИ-ПИ! ЭТО НЕ ' + м.подИменем.toUpperCase() + '\nЭТО МОРФ', 3.2, '#fca5a5');
+      say('🤖 ПЫЛИК: Пи-пи-пи! Я его по запаху узнал. Настоящий ' + м.подИменем + ' так не пишет.', 9);
+      Snd.урон(); break m;
+    }
     морфГостьКд -= dt;
     if (морфГостьКд > 0 || d > 26) break m;
     морфГостьКд = 11 + Math.random()*6;
@@ -2804,7 +3064,17 @@ const ЖЕЛАНИЯ = [
   { id:'shchetka',em:'🪥', имя:'Щётка на страхолов',что:'настоящая щётка от пылесоса: ловушка берёт дальше и сильнее' },
   { id:'teleskop',em:'🔭', имя:'Телескоп',         что:'видеть на карте все миры планеты, даже неоткрытые' },
   { id:'telefon', em:'📱', имя:'Телефон',          что:'спрашивать планету о чём угодно и видеть друзей на карте' },
+  /* 🌠 НОВЫЕ ЖЕЛАНИЯ (заказ Марка 26.09): «побольше желаний, например набор контейнеров
+     для страхолова — чтобы страхов помещалось больше. И придумай ещё крутых предметов». */
+  { id:'banki',    em:'🫙', имя:'Набор банок для страхолова', что:'к страхолову пристёгиваются ещё три банки: влезает не 3 страха, а 12' },
+  { id:'fonarik',  em:'🔦', имя:'Налобный фонарик', что:'светит туда, куда смотришь: страх в луче тает вдвое быстрее (а фобию свет не берёт)' },
+  { id:'pylik',    em:'🤖', имя:'Робот-пылесос Пылик', что:'ездит за тобой по всей планете и чует Морфа: найдёт его среди ёлок и узнает под чужим именем' },
+  { id:'krossovki',em:'👟', имя:'Кроссовки-скороходы', что:'бегаешь в полтора раза быстрее, длинные мосты пролетаешь. Но от страха всё равно не убежишь' },
+  { id:'kompas',   em:'🧭', имя:'Компас эмоций', что:'стрелка на экране всегда показывает, где сфера этого мира' },
 ];
+/* 🪛 насадки и помощники — в руки их не берут: банки и щётка цепляются на страхолов,
+   фонарик — на лоб, кроссовки — на ноги, Пылик ездит сам, компас — на экране */
+const НЕ_В_РУКИ = new Set(['shchetka', 'banki', 'fonarik', 'krossovki', 'pylik', 'kompas']);
 const естьЖ = id => рюкзак.some(п => п.желание === id);
 let посажено = 0;
 function показатьЖелания() {
@@ -2828,14 +3098,128 @@ function загадать(ж) {
   if (i >= 0) { if (рюкзак[i] === вРуках) взятьВРуки(null); рюкзак.splice(i, 1); }
   const вещь = { em:ж.em, имя:ж.имя, можноБросить:false, желание:ж.id };
   рюкзак.push(вещь);
-  /* 🪥 щётка — это НАСАДКА: если страхолов в руках, надеваем её прямо сейчас */
-  if (ж.id === 'shchetka') { if (вРуках) взятьВРуки(вРуках); }
+  /* 🪥 щётка и банки — НАСАДКИ: если страхолов в руках, надеваем их прямо сейчас */
+  if (НЕ_В_РУКИ.has(ж.id)) { if (вРуках) взятьВРуки(вРуках); }
   else взятьВРуки(вещь);                       // остальное сразу показываем в руках
+  if (ж.id === 'pylik') выпуститьПылика();
+  обновитьСнаряжение();
   for (let k = 0; k < 26; k++) искра(player.x, 1.5, player.z, 0xffe08a);
   Snd.победа();
   bigMsg('🌠 ЖЕЛАНИЕ СБЫЛОСЬ\n' + ж.em + ' ' + ж.имя, 3, '#ffe08a');
   say('🤖 ПУЛЬС: ' + ж.что.charAt(0).toUpperCase() + ж.что.slice(1) + '.', 9);
   if (ж.id === 'telefon') setTimeout(() => показатьТелефон(), 1400);
+}
+
+/* ═══════════ 🤖🔦🧭 ПОМОЩНИКИ СО ЗВЕЗДЫ (заказ Марка 26.09) ═══════════ */
+let пылик = null, фонарь = null;
+/* 🤖 ПЫЛИК — круглый робот-пылесос: бампер, кнопка, глаз-огонёк и крутящаяся боковая щётка */
+function модельПылика() {
+  const g = new THREE.Group();
+  const корп = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.48, 0.16, 28),
+    new THREE.MeshStandardMaterial({ color:0xeef2f7, roughness:0.35, metalness:0.2 }));
+  корп.position.y = 0.12; g.add(корп);
+  const бампер = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.035, 8, 28, Math.PI),
+    new THREE.MeshStandardMaterial({ color:0x2b2f3a, roughness:0.6 }));
+  бампер.rotation.x = Math.PI/2; бампер.position.y = 0.12; g.add(бампер);
+  const крышка = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 24),
+    new THREE.MeshStandardMaterial({ color:0x7f5af0, roughness:0.3, metalness:0.4 }));
+  крышка.position.y = 0.215; g.add(крышка);
+  const кнопка = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.03, 16), M.металл);
+  кнопка.position.set(0, 0.24, -0.12); g.add(кнопка);
+  const глазМ = светящийся(0x7dd3fc, 2);
+  const глаз = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), глазМ);
+  глаз.position.set(0, 0.2, 0.44); g.add(глаз);
+  const щётка = new THREE.Group(); щётка.position.set(0.3, 0.04, 0.3); g.add(щётка);
+  const ворсМ = new THREE.MeshStandardMaterial({ color:0x3a3f4b, roughness:1 });
+  for (let i = 0; i < 3; i++) { const в = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.015, 0.03), ворсМ);
+    в.rotation.y = i*Math.PI/3; щётка.add(в); }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g, глазМ, щётка };
+}
+function выпуститьПылика() {
+  if (пылик) return;
+  const м = модельПылика();
+  const x = player.x - Math.sin(player.h)*1.8, z = player.z - Math.cos(player.h)*1.8;
+  м.g.position.set(x, уровеньЗемли(x, z), z); world.add(м.g);
+  пылик = { ...м, x, z, пищит:0, бипКд:0, нашёлЁлку:false };
+  say('🤖 ПЫЛИК: Пи-пи! Я буду ездить за тобой. Морфа я чую за версту.', 8);
+}
+/* 🔦 налобный фонарик: лампа на лбу + настоящий луч света туда, куда смотрит камера */
+function надетьФонарик() {
+  if (фонарь) return;
+  const лампа = new THREE.Group();
+  const ремень = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.025, 6, 24),
+    new THREE.MeshStandardMaterial({ color:0x2b2f3a, roughness:0.9 }));
+  ремень.rotation.x = Math.PI/2; лампа.add(ремень);
+  const корп = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 14),
+    new THREE.MeshStandardMaterial({ color:0xf59e0b, roughness:0.4, metalness:0.3 }));
+  корп.rotation.x = Math.PI/2; корп.position.z = 0.28; лампа.add(корп);
+  const стекло = new THREE.Mesh(new THREE.CircleGeometry(0.06, 14), светящийся(0xfff6c8, 3));
+  стекло.position.z = 0.335; лампа.add(стекло);
+  лампа.position.y = 1.8; герой.g.add(лампа);
+  const свет = new THREE.SpotLight(0xfff1c4, 60, 30, 0.42, 0.55, 1.4);
+  const цель = new THREE.Object3D(); world.add(цель); свет.target = цель; world.add(свет);
+  фонарь = { лампа, свет, цель };
+}
+/* 🪛 всё, что видно на герое и на кнопках: счётчик банки, кроссовки, фонарик, Пылик */
+function обновитьСнаряжение() {
+  $('vacBtn').innerHTML = '🪤<small>ЛОВУШКА' +
+    (вихрьВзят ? ' ' + вБанке.length + '/' + вместимостьБанки() : '') + '</small>';
+  герой.обувь.color.setHex(естьЖ('krossovki') ? 0xe23b3b : 0x2a2f3c);   // 👟 красные скороходы
+  if (естьЖ('fonarik')) надетьФонарик();
+  if (естьЖ('pylik')) выпуститьПылика();
+}
+function обновитьПомощников(dt) {
+  /* 🔦 луч идёт от лба туда, куда смотришь */
+  if (фонарь) {
+    фонарь.свет.position.set(player.x, (player.y || 0) + 1.9, player.z);
+    фонарь.цель.position.set(player.x + Math.sin(yaw)*12, 0.4, player.z + Math.cos(yaw)*12);
+  }
+  /* 🧭 компас: стрелка на сферу этого мира; сфера взята — на дом */
+  const к = $('компас');
+  if (!естьЖ('kompas')) к.style.display = 'none';
+  else {
+    к.style.display = 'flex';
+    const с = сферы[островТут];
+    let цx = null, цz = null, подпись = '🏠 ты дома';
+    if (с && !с.взята) { цx = с.x; цz = с.z; подпись = '🔮 сфера'; }
+    else if (островТут !== 'garmony') { цx = ОСТРОВА.garmony.x; цz = ОСТРОВА.garmony.z; подпись = '🏠 домой'; }
+    const стр = к.querySelector('.стр');
+    if (цx === null) { стр.style.visibility = 'hidden'; $('компасТ').textContent = подпись; }
+    else {
+      const dx = цx - player.x, dz = цz - player.z, d = Math.hypot(dx, dz);
+      const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
+      const a = Math.atan2(dx*rx + dz*rz, dx*fx + dz*fz);   // + вправо, − влево
+      стр.style.visibility = 'visible'; стр.style.transform = 'rotate(' + a.toFixed(3) + 'rad)';
+      $('компасТ').textContent = подпись + ' · ' + Math.round(d) + ' м';
+    }
+  }
+  /* 🤖 Пылик едет следом, а в Лесу обиды ищет Морфа среди ёлок */
+  if (!пылик) return;
+  const п = пылик;
+  let цx = player.x - Math.sin(player.h)*1.8, цz = player.z - Math.cos(player.h)*1.8, скор = 9;
+  const ёлкаМорф = островТут === 'obida' && морф && морф.деревом &&
+    Math.hypot(морф.x-player.x, морф.z-player.z) < 34;
+  if (ёлкаМорф) {                                   // 🌲 кружит вокруг ёлки, которая не ёлка
+    цx = морф.x + Math.cos(time*1.6)*2.4; цz = морф.z + Math.sin(time*1.6)*2.4; скор = 6;
+    if ((п.бипКд -= dt) <= 0) { п.бипКд = 1.1; п.пищит = 0.5;
+      Snd.тон(1320, 0.08, 'square', 0.05); setTimeout(() => Snd.тон(1320, 0.08, 'square', 0.05), 150); }
+    if (!п.нашёлЁлку) { п.нашёлЁлку = true;
+      say('🤖 ПЫЛИК: Пи-пи! Одна из этих ёлок — НЕ ёлка! Я покажу какая — смотри, вокруг чего я кружу.', 9); }
+  } else п.нашёлЁлку = false;
+  const dx = цx - п.x, dz = цz - п.z, d = Math.hypot(dx, dz);
+  if (Math.hypot(player.x-п.x, player.z-п.z) > 40) { п.x = цx; п.z = цz; }   // перебрался на другой остров
+  else if (d > 0.3) {
+    const шаг = Math.min(d, Math.min(скор, 1.5 + d*2.5) * dt);
+    const r2 = скользитьПоСтенам(п.x + dx/d*шаг, п.z + dz/d*шаг, 0.45);
+    п.x = r2.x; п.z = r2.z;
+    п.g.rotation.y = Math.atan2(dx, dz);
+  }
+  п.g.position.set(п.x, уровеньЗемли(п.x, п.z) + Math.abs(Math.sin(time*9))*0.015, п.z);
+  п.щётка.rotation.y += dt*18;
+  if (п.пищит > 0) { п.пищит -= dt; п.глазМ.color.setHex(Math.sin(time*30) > 0 ? 0xff3b3b : 0x7dd3fc); }
+  else п.глазМ.color.setHex(0x7dd3fc);
+  п.глазМ.emissive.copy(п.глазМ.color);
 }
 
 /* 📱 ТЕЛЕФОН: клавиатура и ответы про планету (заказ Марка) */
@@ -2863,6 +3247,11 @@ const СПРАВОЧНИК = [
   { к:['телескоп'], о:'🔭 ТЕЛЕСКОП показывает на карте ВСЕ миры планеты, даже те, где ты ещё не был.' },
   { к:['корзин'], о:'🧺 КОРЗИНА ДЛЯ ЯГОД: с ней образцы не считаются жадностью, можно носить сколько влезет.' },
   { к:['щётк','щетк','насадк'], о:'🪥 ЩЁТКА НА СТРАХОЛОВ — настоящая широкая щётка от пылесоса, с ворсом и колёсиками. Ловушка с ней берёт дальше и тянет сильнее.' },
+  { к:['банк','контейнер','полн','выгруз'], о:'🫙 БАНКА СТРАХОЛОВА вмещает 3 страха. Полная — больше не тянет. Дома, на острове Гармонии, она сама выгружается в компьютер. А НАБОР БАНОК со звезды пристёгивает к страхолову ещё три банки: влезает 12.' },
+  { к:['фонар','свет','луч'], о:'🔦 НАЛОБНЫЙ ФОНАРИК светит туда, куда ты смотришь. Страх в луче тает вдвое быстрее — если, конечно, стоишь и не убегаешь. Фобию свет не берёт: для неё только Страхолов.' },
+  { к:['пылик','робот'], о:'🤖 ПЫЛИК — робот-пылесос со звезды. Ездит за тобой по всей планете. В Лесу обиды кружит вокруг ёлки, которая на самом деле Морф, и пищит. А если Морф притворится другом — Пылик узнает его по запаху.' },
+  { к:['кросс','скороход','быстр','бег'], о:'👟 КРОССОВКИ-СКОРОХОДЫ: бегаешь в полтора раза быстрее, длинные мосты пролетаешь. Но от страха не убежишь — когда бежишь, он всё равно растёт.' },
+  { к:['компас','стрелк','где сфер'], о:'🧭 КОМПАС ЭМОЦИЙ: стрелка слева на экране показывает на сферу этого мира. Сферу взял — показывает дорогу домой.' },
 ];
 function телОтвет(вопрос) {
   const в = вопрос.toLowerCase();
@@ -3135,6 +3524,10 @@ function рисоватьТермометр() {
   }
 }
 let hearts = 3, огоньки = 0, рюкзак = [], вихрьВзят = false, вихрьВкл = false;
+/* 🫙 БАНКА СТРАХОЛОВА (заказ Марка 26.09): в неё влезает ограниченное число страхов.
+   Дома, на острове Гармонии, банка сама выгружается в компьютер. Набор банок — ×4. */
+let вБанке = [], банкаПолнаКд = 0;
+const вместимостьБанки = () => естьЖ('banki') ? 12 : 3;
 let state = 'menu', time = 0, стоюT = 0, мостКд = 0, наМостуБыл = false, запертКд = 0, лаваКд = 0;
 
 function обновитьHud() {
@@ -3296,6 +3689,7 @@ function взять() {
     const пр = { em:'🪤', имя:'СТРАХОЛОВ', можноБросить:false };
     рюкзак.push(пр); взятьВРуки(пр);
     bigMsg('🪤 СТРАХОЛОВ У ТЕБЯ!', 2.4, '#a78bfa');
+    обновитьСнаряжение();
     say('Похож на пылесос, но он не для уборки: страх втягивается раструбом и садится в стеклянную банку. Справиться самому — дороже.', 10);
     return;
   }
@@ -3333,19 +3727,46 @@ function вихрьТумблер() {
   вихрьВкл = !вихрьВкл;
   bigMsg(вихрьВкл ? '🪤 СТРАХОЛОВ ВКЛЮЧЁН' : '🪤 выключен', 1, '#a78bfa');
 }
+/* ⚠️ НАХОДКА 26.09.2026 (жалоба Марка «фобия не засасывается»):
+   1) ловушка тянула страх ПРЯМО В ГЕРОЯ. Обычный страх успевал сжаться ещё и от взгляда,
+      а фобия (её взглядом не уменьшить) долетала большой, проскакивала НАСКВОЗЬ и
+      оказывалась за спиной — вне раструба. Там она висела вечно (размер 0.5 при нужных 0.45).
+      Теперь страх тянет только ДО раструба, а у раструба он «прилип»: угол уже не важен,
+      банка дожимает его, пока не влезет.
+   2) ловушка работала ТОЛЬКО в лабиринте — гостя на Гармонии поймать было нельзя,
+      а гостя-фобию вообще никак. Теперь ловит на любом острове, где есть страх. */
 function обновитьВихрь(dt) {
-  if (!вихрьВкл || островТут !== 'strah') return;
+  /* 🖥 ДОМА банка сама выгружается в компьютер (в нём живут карточки пойманных страхов) */
+  if (островТут === 'garmony' && вБанке.length) {
+    const выгр = вБанке.splice(0); пойманныеСтрахи.push(...выгр);
+    bigMsg('🖥 ВЫГРУЖЕНО В КОМПЬЮТЕР\n' + выгр.map(f => f.em).join(' '), 2.4, '#7dd3fc');
+    if (вРуках && вРуках.имя === 'СТРАХОЛОВ') взятьВРуки(вРуках);
+    обновитьСнаряжение();
+  }
+  if (банкаПолнаКд > 0) банкаПолнаКд -= dt;
+  if (!вихрьВкл) return;
+  if (вБанке.length >= вместимостьБанки()) {        // 🫙 полная банка больше не тянет
+    if (банкаПолнаКд <= 0) { банкаПолнаКд = 5;
+      bigMsg('🫙 БАНКА ПОЛНА · ' + вБанке.length + ' из ' + вместимостьБанки(), 1.8, '#f472b6');
+      say(естьЖ('banki') ? '🤖 ПУЛЬС: Все банки полны. Домой, на Гармонию, — выгрузить страхи в компьютер.'
+        : '🤖 ПУЛЬС: Банка полна. Выгрузи страхи дома, на Гармонии, — или загадай на звезду набор банок.', 8); }
+    return;
+  }
   const f = { x: Math.sin(yaw), z: Math.cos(yaw) };
+  const щ = естьЖ('shchetka');                          // 🪥 щётка от пылесоса — желание Марка
   for (const s of страхи) {
-    if (!s.жив) continue;
-    const щ = естьЖ('shchetka');                        // 🪥 щётка от пылесоса — желание Марка
+    if (!s.жив || (s.где || 'strah') !== островТут) continue;
     const dx = s.x-player.x, dz = s.z-player.z, d = Math.hypot(dx, dz) || 1;
-    if (d > (щ ? 12 : 7)) continue;
-    if ((dx/d)*f.x + (dz/d)*f.z < (щ ? 0.62 : 0.8)) continue;
-    s.x -= dx/d * (щ ? 9.5 : 6) * dt; s.z -= dz/d * (щ ? 9.5 : 6) * dt;   // тянет к трубе
-    s.размер = Math.max(0.15, s.размер - dt*(щ ? 0.85 : 0.5));
+    const уРаструба = d < 2.4;                          // прилип к раструбу — не вырвется
+    if (!уРаструба) {
+      if (d > (щ ? 12 : 7)) continue;
+      if ((dx/d)*f.x + (dz/d)*f.z < (щ ? 0.62 : 0.8)) continue;
+      const шаг = Math.min(d - 1.9, (щ ? 9.5 : 6) * dt);   // тянет к трубе, но не сквозь тебя
+      s.x -= dx/d * шаг; s.z -= dz/d * шаг;
+    }
+    s.размер = Math.max(0.15, s.размер - dt*(уРаструба ? 1.1 : щ ? 0.85 : 0.5));
     if (Math.random() < 0.5) искра(s.x, 1, s.z, 0x7dd3fc);
-    if (d < 2.2 && s.размер < 0.45) победитьСтрах(s, true);
+    if (уРаструба && s.размер < 0.45) победитьСтрах(s, true);
   }
 }
 $('telClose').onclick = () => $('tel').classList.remove('show');
@@ -3416,7 +3837,7 @@ function двигать(dt) {
   mx += стик.x; mz += стик.y;
   const l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
   const бег = keys.ShiftLeft || keys.ShiftRight || Math.hypot(стик.x, стик.y) > 0.8;
-  const макс = (l ? (бег ? 7.6 : 4.2) : 0);
+  const макс = (l ? (бег ? (естьЖ('krossovki') ? 11.4 : 7.6) : 4.2) : 0);   // 👟 скороходы
   const sin = Math.sin(yaw), cos = Math.cos(yaw);
   const wx = sin*(-mz) - cos*mx, wz = cos*(-mz) + sin*mx;
   player.скор += (макс - player.скор) * Math.min(1, dt*8);
@@ -3544,6 +3965,7 @@ function новыйЦветОгонька() {
 мост('strah',  'otvrat',true);
 мост('otvrat', 'radost',true);
 epVisual(()=>epPolish());
+epVisual(()=>epNaturePolish());
 player.неуязв = 0;
 камера(0, true);
 
@@ -3563,7 +3985,7 @@ function loop(now) {
     двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
     обновитьЗеркала(dt); обновитьПещеру(dt); обновитьГору(dt); обновитьМоре(dt); обновитьОбразцы(dt);
-    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt);
+    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt); обновитьПомощников(dt);
     обновитьГостей(dt); обновитьМорфаГостя(dt); письмаДрузей(dt);
     обновитьНочь(dt); камера(dt, false);
     обновитьHud();
@@ -3575,6 +3997,7 @@ function loop(now) {
   if (пульсКд > 0) пульсКд -= dt;
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $('bigMsg').style.opacity = 0; }
   if (sayT > 0) { sayT -= dt; if (sayT <= 0) $('say').style.display = 'none'; }
+  epNatureAnimate(time);
   renderer.render(scene, camera);
 }
 requestAnimationFrame(loop);
@@ -4000,7 +4423,8 @@ function показатьКарту() {
   });
   $('mapWho').textContent = 'Ты сейчас — ' + ОСТРОВА[островТут].имя;
   $('mapFears').textContent = '🌀 Пойманных страхов в компьютере: ' + пойманныеСтрахи.length +
-    (пойманныеСтрахи.length ? ' · ' + пойманныеСтрахи.map(f => f.em).join(' ') : '');
+    (пойманныеСтрахи.length ? ' · ' + пойманныеСтрахи.map(f => f.em).join(' ') : '') +
+    (вБанке.length ? ' · 🫙 в банке ещё ' + вБанке.length + ': ' + вБанке.map(f => f.em).join(' ') : '');
   /* 📱 ТЕЛЕФОН (желание Марка): на карте видно друзей */
   if (естьЖ('telefon')) {
     let др = []; try { др = (window.__мкДрузья ? window.__мкДрузья() : []).filter(Boolean); } catch(_) {}
@@ -4162,7 +4586,16 @@ window.__dbg = {
     летит:з.летит, взята:з.взята })); },
   get degrees(){ const o = {}; for (const e in градусы) o[e] = +градусы[e].toFixed(2); return o; },
   map(){ показатьКарту(); return КАРТА_ПОРЯДОК.length; },
-  get caught(){ return пойманныеСтрахи.map(f => f.id); },
+  get caught(){ return [...пойманныеСтрахи, ...вБанке].map(f => f.id); },
+  get pylik(){ return пылик ? { dИгрок:+Math.hypot(пылик.x-player.x, пылик.z-player.z).toFixed(1),
+    dМорф:морф ? +Math.hypot(пылик.x-морф.x, пылик.z-морф.z).toFixed(1) : null, пищит:пылик.пищит > 0 } : null; },
+  get compass(){ const к = $('компас'); return { видно:к.style.display !== 'none',
+    текст:$('компасТ').textContent, поворот:к.querySelector('.стр').style.transform }; },
+  get gear(){ return { обувь:'#' + герой.обувь.color.getHexString(), фонарь:!!фонарь,
+    всегоЖеланий:ЖЕЛАНИЯ.length }; },
+  morphGuestRaw(){ return морфГость ? { раскрыт:морфГость.раскрыт, подИменем:морфГость.подИменем } : null; },
+  get jar(){ return { в:вБанке.length, из:вместимостьБанки(), комп:пойманныеСтрахи.length,
+    кнопка:$('vacBtn').textContent }; },
   get ach(){ return [...достигнуто]; },
   get worlds(){ return [...открытыеМиры]; },
   achAll(){ показатьДост(); return ДОСТИЖЕНИЯ.length; },
