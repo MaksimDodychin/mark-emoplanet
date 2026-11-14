@@ -209,7 +209,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "c8622c5734";</script>
+  <script>window.__APP_VER = "040ccf2a7e";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -5687,7 +5687,7 @@ function показатьСтрахиВКомпе() {
     СТРАХИ.filter(в => в.фобия).length + карточки, false);
 }
 
-/* ── 📡 ПРЯМОЙ ЭФИР: камера облетает остров (или следит за другом) ── */
+/* ── 📡 ПРЯМОЙ ЭФИР: камера показывает остров сбоку (или следит за другом) ── */
 function показатьЭфир(оп) {
   $('комп').classList.remove('show');
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -5717,11 +5717,18 @@ function листатьОстровы(шаг) {
 }
 function камераЭфира(dt) {
   эфир.t += dt;
-  let cx = эфир.x, cz = эфир.z, R = эфир.r*1.35, H = эфир.r*0.9 + 8;
-  if (эфир.следить) { cx = эфир.следить.position.x; cz = эфир.следить.position.z; R = 9; H = 7; }
-  const a = 0.65;
-  camera.position.set(cx + Math.cos(a)*R, H, cz + Math.sin(a)*R);
-  camera.lookAt(cx, эфир.следить ? 1.2 : 1.5, cz);
+  // Неподвижная камера у края острова, направленная поперёк площадки.
+  const id=эфир.остров, гора=id==='trevoga' || id==='zloba';
+  let cx=эфир.x, cz=эфир.z, даль=эфир.r*1.04, высота=гора ? 13 : 8, цельY=гора ? 7 : 2;
+  if(id==='styd'){ даль=эфир.r*.64; высота=4.8; } // внутри кольца скал, под потолком
+  if(id==='strah'){ высота=8.6; цельY=2.8; } // поверх ближайшей стены видны проходы
+  if(эфир.следить){
+    const p=эфир.следить.position;
+    cx=p.x; cz=p.z; даль=7.5; высота=p.y+3.6; цельY=p.y+1.2;
+  }
+  const a=.65;
+  camera.position.set(cx+Math.cos(a)*даль,высота,cz+Math.sin(a)*даль);
+  camera.lookAt(cx,цельY,cz);
   player.неуязв = Math.max(player.неуязв || 0, 0.3);   // пока смотришь эфир — тебя не трогают
   if (эфир.обзор && эфир.t>=эфир.проверкаДрузей) {
     эфир.проверкаДрузей=эфир.t+.5;
