@@ -118,6 +118,14 @@
   #эфирИмя { position:absolute; left:50%; top:14px; transform:translateX(-50%); background:#c81414;
     color:#fff; font:900 16px system-ui; padding:6px 14px; border-radius:999px; white-space:nowrap; }
   #эфирClose { position:absolute; right:18px; bottom:18px; pointer-events:auto; }
+  #эфир { pointer-events:auto; touch-action:none; }
+  #эфирИмя { max-width:95%; box-sizing:border-box; text-align:center; white-space:normal; font-size:clamp(13px,3.4vw,16px); }
+  #эфирЛюди { position:absolute; top:22%; width:100%; text-align:center; text-shadow:0 1px 4px #000; font-weight:bold; }
+  #эфирЛюди span, #эфирНав { background:#142033ed; border-radius:28px; padding:4px 10px; }
+  #эфирНав { display:none; position:absolute; bottom:16px; left:12px; align-items:center; gap:6px; }
+  #эфир.обзор #эфирНав { display:flex; }
+  #эфирНав button { width:42px; height:42px; border:0; border-radius:50%; background:#365885; color:white; font:bold 28px/1 system-ui; cursor:pointer; }
+  #эфирClose { min-width:0; padding:10px; right:10px; }
   #telBox { background:#0b1220; border:2px solid #2f6fbf; border-radius:26px; padding:16px;
     width:min(430px,94vw); max-height:calc(100dvh - 20px); overflow:auto; }
   #telЛента { background:#050a14; border-radius:14px; padding:10px; min-height:160px; max-height:40vh;
@@ -201,7 +209,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "1d1c63c6c1";</script>
+  <script>window.__APP_VER = "ce43f364be";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -264,7 +272,7 @@
 </div></div>
 <div id="комп"><div id="компBox">
   <h1 style="font-size:20px;margin-bottom:4px">🖥 КОМПЬЮТЕР ПЛАНЕТЫ</h1>
-  <div id="компПодсказки"><button class="телПодсказ">Покажи вулкан злобы</button><button class="телПодсказ">Где мой друг?</button><button class="телПодсказ">Пойманные страхи и фобии</button><button class="телПодсказ">Покажи Сад зависти</button></div>
+  <div id="компПодсказки"><button class="телПодсказ">Покажи остров эмоций</button><button class="телПодсказ">Где мой друг?</button><button class="телПодсказ">Пойманные страхи и фобии</button></div>
   <div id="компЛента"></div>
   <div id="компВвод">
     <input id="компПоле" placeholder="Напиши, что показать…" autocomplete="off">
@@ -272,7 +280,10 @@
   </div>
   <button class="btn" id="компClose" style="margin-top:10px">Закрыть</button>
 </div></div>
-<div id="эфир"><div id="эфирИмя">🔴 ПРЯМОЙ ЭФИР</div><button class="btn" id="эфирClose">✖ Выключить</button></div>
+<div id="эфир"><div id="эфирИмя">🔴 ПРЯМОЙ ЭФИР</div><div id="эфирЛюди" aria-live="polite"></div>
+  <nav id="эфирНав" aria-label="Обзор островов">
+    <button id="эфирНазад" aria-label="Предыдущий остров">‹</button><span id="эфирНомер"></span><button id="эфирДальше" aria-label="Следующий остров">›</button>
+  </nav><button class="btn" id="эфирClose">✖ Выключить</button></div>
 <div id="emo"><div id="emoBox">
   <h1 style="font-size:22px;margin-bottom:4px">😀 ЧТО ТЫ СЕЙЧАС ЧУВСТВУЕШЬ?</h1>
   <div class="sub" style="font-size:13px;margin-bottom:10px">
@@ -527,7 +538,7 @@ function epArchitecture() {
 }
 function epPolish() {
   epHeroDetails();
-  const groundKinds={udiv:['grass','#99bd87'],vostorg:['grass','#b0be72'],garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e'],zaznai:['stone','#9fb4c8'],/* ⚠️ новых миров тут не было, и им доставался СЕРЫЙ камень по умолчанию (19.09) */styd:['stone','#6a5560'],trevoga:['stone','#6f7482'],lyubov:['sand','#f0c49c'],zavist:['grass','#4f8a44']};
+  const groundKinds={udiv:['grass','#f6b57b'],vostorg:['grass','#b0be72'],garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e'],zaznai:['stone','#9fb4c8'],/* ⚠️ новых миров тут не было, и им доставался СЕРЫЙ камень по умолчанию (19.09) */styd:['stone','#6a5560'],trevoga:['stone','#6f7482'],lyubov:['sand','#f0c49c'],zavist:['grass','#4f8a44']};
   for(const o of Object.values(ОСТРОВА)){
     const ground=world.children.find(m=>m.isMesh&&m.geometry.type==='CylinderGeometry'&&m.geometry.parameters.height===1.2&&m.position.x===o.x&&m.position.z===o.z);
     /* ⚠️ новый остров без записи тут ронял ВСЮ игру — теперь есть запасной вариант */
@@ -849,7 +860,7 @@ function травинки(x, z) {
    «в миры можно бегать по мостам»).
    ═══════════════════════════════════════════════════════════════════ */
 const ОСТРОВА = {
-  udiv: { имя:'🌷 Равнина удивления', x:226, z:0, r:25, цвет:0x8dc592, небо:0xffdae4, небоВерх:0x78bcdb },
+  udiv: { имя:'🌷 Равнина удивления', x:226, z:0, r:25, цвет:0xf6b57b, небо:0xffdae4, небоВерх:0x78bcdb },
   vostorg: { имя:'🎶 Холмы восторга', x:252, z:112, r:26, цвет:0xa6c779, небо:0xffdda6, небоВерх:0x8aadea },
   /* 🌉 ПРОСЬБА МАРКА: острова стоят ДАЛЕКО друг от друга — с одного другой не виден,
      и по мосту надо долго бежать. Расстояния разведены в 1.6 раза, туман подтянут под это. */
@@ -1323,6 +1334,12 @@ addEventListener('keydown', e => {
   /* ⚠️ 26.09: в русской раскладке «у», «а», «ц», «ф», «ы», «в» — это клавиши E, F, W, A, S, D.
      Пока пишешь в телефоне или компьютере, герой ходил, хватал вещи и щёлкал ловушкой. */
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (эфир) {
+    if (e.key==='ArrowLeft' || e.key==='ArrowRight') {
+      e.preventDefault(); if (!e.repeat) листатьОстровы(e.key==='ArrowLeft'?-1:1);
+    } else if (e.key==='Escape') закрытьЭфир();
+    return;
+  }
   keys[e.code] = true;
   if (e.code === 'Space') { e.preventDefault(); прыжок(); }
   if (e.code === 'KeyE') взять();
@@ -4544,7 +4561,7 @@ function раскрытьБутон() {
   б.раскрыт=true; б.чудо.visible=true;
   const найдено=бутоныУдивления.filter(б=>б.раскрыт).length;
   Snd.искра();
-  if (найдено===3) открытьСферу('udiv');
+  if (найдено===3) { открытьСферу('udiv'); открытьДост('threeWonders'); }
   else bigMsg('🌷 Раскрыто бутонов: '+найдено+' из 3',2,'#fce7ff');
   return true;
 }
@@ -4597,7 +4614,7 @@ function обновитьНовыеОстрова(dt) {
       Snd.тон(х.нота,.7,'triangle',.16);
       const собрано=вершиныВосторга.filter(в=>в.звучал).length;
       if (собрано===3) {
-        открытьСферу('vostorg');
+        открытьСферу('vostorg'); открытьДост('hillSong');
         if (Snd.ctx) вершиныВосторга.forEach((в,i)=>Snd.тон(в.нота,.5,'triangle',.13,undefined,Snd.ctx.currentTime+.35+i*.25));
       } else bigMsg('🎶 Прозвучало вершин: '+собрано+' из 3',2,'#ffefac');
     }
@@ -4846,6 +4863,8 @@ const О_СТРАХАХ = {
 
 /* ═══════════ 🏆 ДОСТИЖЕНИЯ (заказ Марка 12.09) ═══════════ */
 const ДОСТИЖЕНИЯ = [
+  { id:'threeWonders', em:'🌷', имя:'Три маленьких чуда', desc:'Раскрыть все три бутона на Равнине удивления' },
+  { id:'hillSong', em:'🎵', имя:'Мелодия вершин', desc:'Сыграть мелодию на трёх Холмах восторга' },
   { id:'nervy',   em:'💪', имя:'Крепкие нервы',          desc:'Ни разу не попасть на вулкан злобы за всю игру' },
   { id:'besstr',  em:'👁', имя:'Бесстрашный',            desc:'Переловить ВСЕХ страхов без ловушки — просто стоя и глядя' },
   { id:'nebeg',   em:'🧘', имя:'Ни шагу назад',          desc:'Пройти лабиринт, ни разу не убежав от страха' },
@@ -4910,7 +4929,15 @@ $('achClose').onclick = () => $('ach').classList.remove('show');
 const ЗНАЧКИ = {
   udiv(g,w,h) {
     зал(g,w,h,'#b6e2e5','#ffdfc7');
-    g.fillStyle='#68a887'; g.fillRect(0,h*.65,w,h*.35);
+    g.fillStyle='#f8bd83'; g.fillRect(0,h*.56,w,h*.44);
+    g.fillStyle='#ffd6a2'; g.beginPath(); g.ellipse(w*.51,h*.80,w*.43,h*.13,-.035,0,Math.PI*2); g.fill();
+    g.fillStyle='#a16b32';
+    for (const [x,y] of [[.17,.25],[.55,.16],[.84,.30]]) {
+      g.beginPath(); for (let k=0;k<8;k++) {
+        const a=k*Math.PI/4, r=k%2===0?h*.075:h*.021;
+        g.lineTo(w*x+Math.cos(a)*r,h*y+Math.sin(a)*r);
+      } g.closePath(); g.fill();
+    }
     for (const x of [.23,.5,.77]) {
       g.fillStyle='#33765c'; g.fillRect(w*x-2,h*.50,4,h*.29);
       for (const side of [-1,1]) {
@@ -4920,11 +4947,14 @@ const ЗНАЧКИ = {
     }
   },
   vostorg(g,w,h) {
-    зал(g,w,h,'#92c4da','#ffe0a6');
-    for (const [x,y,r,c] of [[.75,.9,.46,'#72ab83'],[.25,.94,.42,'#8db664'],[.5,1.15,.52,'#a5c77a']]) {
-      g.fillStyle=c; g.beginPath(); g.ellipse(x*w,y*h,r*w,.52*h,0,0,7); g.fill();
+    зал(g,w,h,'#94bce5','#ffdfae');
+    g.fillStyle='#fff2bf'; g.beginPath(); g.arc(w*.76,h*.29,h*.14,0,Math.PI*2); g.fill();
+    for (const [x,y,r,цвет] of [[.53,.48,.37,'#619a90'],[.17,.64,.33,'#77ae7e'],[.86,.70,.37,'#96bb75']]) {
+      g.fillStyle=цвет; g.beginPath(); g.ellipse(x*w,(y+.57)*h,r*w,.57*h,0,0,Math.PI*2); g.fill();
+      g.fillStyle='#493659'; g.font='bold '+Math.round(h*.23)+'px system-ui'; g.textAlign='center';
+      g.fillText('♪',w*x,h*(y-.025));
     }
-    g.fillStyle='#65476b'; g.font='bold '+Math.round(h*.33)+'px system-ui'; g.fillText('♫',w*.59,h*.37);
+    g.textAlign='start';
   },
   garmony: (g, w2, h2) => {                       // 💛 золотой фон и маяк с лучом
     зал(g, w2, h2, '#f6c453', '#e09b2d');
@@ -5216,7 +5246,7 @@ function мкФигура(и, высота, корень) {
    Телевизор мира показывает НОВОСТИ своего острова; большой компьютер — только дома. */
 const КЛЮЧИ_МИРОВ = {
   udiv:['равнин','удивлен'], vostorg:['холм','восторг'],
-  garmony:['гармон','дом','маяк'], strah:['лабиринт'], radost:['пляж','радост'],
+  garmony:['гармон','дом','маяк'], strah:['лабиринт'], radost:['пляж','радост','счасть'],
   pechal:['рек','печал'], zloba:['вулкан','злоб','злост'], otvrat:['болот','отвращ'],
   len:['пустын','лени','лень'], zhadn:['пропаст','жадн','бездн'], skuka:['скучн','полян','скук'],
   zaznai:['зеркал','зазнай'], obida:['лес','обид'], styd:['пещер','стыд'],
@@ -5357,9 +5387,9 @@ function компСтрока(html, я) {
 }
 function открытьКомпьютер() {
   if (!компПривет) { компПривет = true;
-    компСтрока('🖥 Компьютер планеты включён. Напиши, что показать: любой остров, где твой друг, или пойманных страхов.', false); }
+    компСтрока('🖥 Компьютер планеты включён. Нажми «Покажи остров эмоций» и листай камеры свайпом или стрелками. Можно также ввести название острова.', false); }
   $('комп').classList.add('show');
-  setTimeout(() => $('компПоле').focus(), 60);
+  setTimeout(() => { if ($('комп').classList.contains('show')) $('компПоле').focus(); }, 60);
 }
 function компСпросить(текст) {
   текст = (текст || '').trim(); if (!текст) return;
@@ -5368,6 +5398,10 @@ function компСпросить(текст) {
 }
 function компОтвет(текст) {
   const в = текст.toLowerCase().replace(/ё/g, 'е');
+  if (/остров[а-я]*\s+эмоци|все\s+остров|обзор\s+остров/.test(в)) {
+    показатьЭфир({ остров:'garmony', обзор:true });
+    return 'обзор';
+  }
   /* 🕸 пойманные страхи и фобии (слово «лабиринт» — это уже про остров) */
   if (/пойман|фоби|коллекц|банк/.test(в) || (/страх/.test(в) && !/лабиринт/.test(в))) {
     показатьСтрахиВКомпе(); return 'страхи'; }
@@ -5378,20 +5412,16 @@ function компОтвет(текст) {
     const кто = др.find(д => в.includes(д.имя.toLowerCase())) || др[0];
     const где = кто.остров ? ОСТРОВА[кто.остров].имя : 'где-то на планете';
     компСтрока('📍 ' + кто.имя + ' сейчас: ' + где + '. Включаю камеру…', false);
-    setTimeout(() => показатьЭфир({ следить:кто.g, имя:'👤 ' + кто.имя + ' · ' + где, остров:кто.остров }), 700);
+    показатьЭфир({ следить:кто.g, имя:'👤 ' + кто.имя + ' · ' + где, остров:кто.остров });
     return 'друг';
   }
   /* 🏝 остров */
   const id = мирИзЗапроса(в);
   if (id) {
-    if (!открытыеМиры.has(id) && !естьЖ('teleskop')) {
-      компСтрока('🔒 ' + ОСТРОВА[id].имя.replace(/^\S+\s/, '') + ' ещё не открыт — камеры туда не достают. Сперва попади туда сам.', false);
-      return 'закрыт'; }
-    компСтрока('📡 Включаю камеру: ' + ОСТРОВА[id].имя + '…', false);
-    setTimeout(() => показатьЭфир({ остров:id, имя:ОСТРОВА[id].имя }), 700);
+    показатьЭфир({ остров:id, обзор:true });
     return id;
   }
-  компСтрока('🤔 Не понял запрос. Попробуй: «Покажи вулкан злобы», «Где мой друг?» или «Пойманные страхи».', false);
+  компСтрока('🤔 Не понял запрос. Попробуй: «Покажи остров эмоций», «Где мой друг?» или «Пойманные страхи».', false);
   return null;
 }
 function показатьСтрахиВКомпе() {
@@ -5414,14 +5444,30 @@ function показатьСтрахиВКомпе() {
 /* ── 📡 ПРЯМОЙ ЭФИР: камера облетает остров (или следит за другом) ── */
 function показатьЭфир(оп) {
   $('комп').classList.remove('show');
-  const o = оп.остров ? ОСТРОВА[оп.остров] : ОСТРОВА[островТут];
-  эфир = { ...оп, t:0, x:o.x, z:o.z, r:o.r,
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  эфир = { ...оп,
     было:{ фон:scene.background.getHex(), туман:scene.fog.color.getHex(), near:scene.fog.near, far:scene.fog.far } };
+  $('эфир').classList.toggle('обзор', !!оп.обзор);
+  $('эфир').classList.add('show'); document.body.classList.add('эфирВкл');
+  настроитьКамеруОстрова(оп.остров || островТут);
+}
+function настроитьКамеруОстрова(id) {
+  const o = ОСТРОВА[id];
+  Object.assign(эфир,{ остров:id, t:0, x:o.x, z:o.z, r:o.r, проверкаДрузей:0 });
   scene.background.setHex(o.небо); scene.fog.color.setHex(o.небо);
   небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);
   scene.fog.near = 80; scene.fog.far = 260;
-  $('эфирИмя').textContent = '🔴 ПРЯМОЙ ЭФИР · ' + оп.имя;
-  $('эфир').classList.add('show'); document.body.classList.add('эфирВкл');
+  $('эфирИмя').textContent = '🔴 ' + (эфир.имя || o.имя);
+  const номер = КАРТА_ПОРЯДОК.findIndex(([ключ])=>ключ===id)+1;
+  $('эфирНомер').textContent = номер+' / '+КАРТА_ПОРЯДОК.length;
+  $('эфирЛюди').replaceChildren();
+  камераЭфира(0);
+}
+function листатьОстровы(шаг) {
+  if (!эфир?.обзор) return;
+  const i=КАРТА_ПОРЯДОК.findIndex(([id])=>id===эфир.остров);
+  const n=КАРТА_ПОРЯДОК.length;
+  настроитьКамеруОстрова(КАРТА_ПОРЯДОК[(i+шаг+n)%n][0]);
 }
 function камераЭфира(dt) {
   эфир.t += dt;
@@ -5431,7 +5477,17 @@ function камераЭфира(dt) {
   camera.position.set(cx + Math.cos(a)*R, H, cz + Math.sin(a)*R);
   camera.lookAt(cx, эфир.следить ? 1.2 : 1.5, cz);
   player.неуязв = Math.max(player.неуязв || 0, 0.3);   // пока смотришь эфир — тебя не трогают
-  if (эфир.t > 24) закрытьЭфир();
+  if (эфир.обзор && эфир.t>=эфир.проверкаДрузей) {
+    эфир.проверкаДрузей=эфир.t+.5;
+    const имена=друзьяНаПланете().filter(д=>д.остров===эфир.остров).map(д=>д.имя);
+    const текст=имена.length ? '👥 '+имена.join(', ') : '';
+    const люди=$('эфирЛюди');
+    if (люди.textContent!==текст) {
+      люди.replaceChildren();
+      if (текст) { const п=document.createElement('span'); п.textContent=текст; люди.appendChild(п); }
+    }
+  }
+  if (!эфир.обзор && эфир.t > 24) закрытьЭфир();
 }
 function закрытьЭфир() {
   if (!эфир) return;
@@ -5446,6 +5502,21 @@ $('компClose').onclick = () => $('комп').classList.remove('show');
 $('компОтпр').onclick = () => компСпросить($('компПоле').value);
 $('компПоле').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); компСпросить(e.target.value); } };
 $('компПодсказки').querySelectorAll('button').forEach(b => b.onclick = () => компСпросить(b.textContent));
+$('эфирНазад').onclick=()=>листатьОстровы(-1);
+$('эфирДальше').onclick=()=>листатьОстровы(1);
+let началоСвайпа=null;
+$('эфир').addEventListener('pointerdown',e=>{
+  if (!эфир?.обзор || !e.isPrimary || e.target.closest('button')) return;
+  началоСвайпа={id:e.pointerId,x:e.clientX,y:e.clientY};
+  $('эфир').setPointerCapture(e.pointerId);
+});
+$('эфир').addEventListener('pointerup',e=>{
+  if (началоСвайпа?.id!==e.pointerId) return;
+  const dx=e.clientX-началоСвайпа.x, dy=e.clientY-началоСвайпа.y;
+  началоСвайпа=null;
+  if (Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.3) листатьОстровы(dx<0?1:-1);
+});
+$('эфир').addEventListener('pointercancel',()=>{началоСвайпа=null;});
 $('эфирClose').onclick = () => закрытьЭфир();
 построитьКомпьютеры();
 
