@@ -201,7 +201,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "09f86e0d59";</script>
+  <script>window.__APP_VER = "1d1c63c6c1";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -527,7 +527,7 @@ function epArchitecture() {
 }
 function epPolish() {
   epHeroDetails();
-  const groundKinds={garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e'],zaznai:['stone','#9fb4c8'],/* ⚠️ новых миров тут не было, и им доставался СЕРЫЙ камень по умолчанию (19.09) */styd:['stone','#6a5560'],trevoga:['stone','#6f7482'],lyubov:['sand','#f0c49c'],zavist:['grass','#4f8a44']};
+  const groundKinds={udiv:['grass','#99bd87'],vostorg:['grass','#b0be72'],garmony:['grass','#82ac64'],strah:['stone','#747184'],radost:['sand','#e7c68a'],pechal:['stone','#849dac'],zloba:['ash','#68463b'],otvrat:['moss','#789047'],len:['sand','#dabb7c'],zhadn:['stone','#a48a50'],skuka:['grass','#a0a899'],obida:['moss','#59785e'],zaznai:['stone','#9fb4c8'],/* ⚠️ новых миров тут не было, и им доставался СЕРЫЙ камень по умолчанию (19.09) */styd:['stone','#6a5560'],trevoga:['stone','#6f7482'],lyubov:['sand','#f0c49c'],zavist:['grass','#4f8a44']};
   for(const o of Object.values(ОСТРОВА)){
     const ground=world.children.find(m=>m.isMesh&&m.geometry.type==='CylinderGeometry'&&m.geometry.parameters.height===1.2&&m.position.x===o.x&&m.position.z===o.z);
     /* ⚠️ новый остров без записи тут ронял ВСЮ игру — теперь есть запасной вариант */
@@ -849,6 +849,8 @@ function травинки(x, z) {
    «в миры можно бегать по мостам»).
    ═══════════════════════════════════════════════════════════════════ */
 const ОСТРОВА = {
+  udiv: { имя:'🌷 Равнина удивления', x:226, z:0, r:25, цвет:0x8dc592, небо:0xffdae4, небоВерх:0x78bcdb },
+  vostorg: { имя:'🎶 Холмы восторга', x:252, z:112, r:26, цвет:0xa6c779, небо:0xffdda6, небоВерх:0x8aadea },
   /* 🌉 ПРОСЬБА МАРКА: острова стоят ДАЛЕКО друг от друга — с одного другой не виден,
      и по мосту надо долго бежать. Расстояния разведены в 1.6 раза, туман подтянут под это. */
   garmony: { имя:'💛 Остров Гармонии', x:0,   z:0,   r:26, цвет:0x63b34a, небо:0xbfe6ff, небоВерх:0x2f7fd0 },
@@ -1451,6 +1453,8 @@ function геройГоворит(текст, цвет) { реплика('гер
    для игрока»). Пока ты на острове чувства и ещё не справился с ним, человечек сам иногда
    говорит его фразу — в пузыре над головой. Фразы Марка — дословно, остальные в том же духе. */
 const МЫСЛИ_ГЕРОЯ = {
+  udiv:['Что прячется в этом бутоне?', 'А этот раскроется так же?'],
+  vostorg:['Как далеко слышно с вершины!', 'Интересно, как прозвучат все три ноты вместе?'],
   strah:  ['Мне страшно… А вдруг он за углом?', 'Только бы не оборачиваться…', 'Ой, что там шуршит?',
            'Хочу домой. Прямо сейчас.', 'А если они все сразу выскочат?'],
   radost: ['Ура! Как же здорово!', 'Хочу прыгать до самого неба!', 'Ха-ха, мне так весело!',
@@ -1512,6 +1516,7 @@ function обнимашкиМишки(dt) {
    зелёная в болоте отвращения, синяя у реки печали, жёлтая на пляже счастья…
    Видно её сразу — но пока не справился с эмоцией, её держит скорлупа. */
 const ЦВЕТ_СФЕРЫ = {
+  udiv:0x6befd5, vostorg:0xff9858,
   zaznai:0x7dd3fc,
   strah:0x8b5cf6, otvrat:0x5ad14a, pechal:0x3f8fe0, radost:0xffd24a,
   zloba:0xff4d2a, len:0xe0a040, garmony:0xffe08a,
@@ -1520,6 +1525,8 @@ const ЦВЕТ_СФЕРЫ = {
 };
 const сферы = {};
 const ЗАДАЧА_МИРА = {
+  udiv:'Найди три больших бутона. Подойди к каждому и нажми ✋, чтобы увидеть, что внутри.',
+  vostorg:'Поднимись на три зелёные вершины и наступи на цветные площадки с нотами.',
   strah:  'Посмотри каждому страху в глаза — стой и не убегай. Всех переловишь — скорлупа спадёт.',
   zloba:  'Сосчитай до десяти: тронь десять камней ПО ПОРЯДКУ, с единицы. Собьёшься — начни заново.',
   otvrat: 'Убери пять комков слизи: подойди к каждому, а не убегай.',
@@ -1563,6 +1570,7 @@ function поставитьСферу(id, x, z) {
 function открытьСферу(id) {
   const с = сферы[id]; if (!с || с.открыта) return;
   с.открыта = true; с.скорлупа.visible = false;
+  if (островТут === id && (id === 'udiv' || id === 'vostorg')) $('task').textContent = '🔮 Подойди к светящейся сфере и забери её.';
   for (let i = 0; i < 24; i++) искра(с.x, 2.3, с.z, с.цвет);
   Snd.искра();
   bigMsg('🔮 СФЕРА ОСВОБОДИЛАСЬ!\nзабери её', 3, '#' + с.цвет.toString(16));
@@ -1585,6 +1593,7 @@ function обновитьСферы(dt) {
       continue;
     }
     if (!рядом) continue;
+    if (id === 'udiv' || id === 'vostorg') $('task').textContent = '✅ Сфера у тебя. Теперь можно идти по мосту.';
     с.взята = true; с.g.visible = false; огоньки++; обновитьHud(); Snd.победа();
     for (let i = 0; i < 30; i++) искра(с.x, 2.3, с.z, с.цвет);
     рюкзак.push({ em:'🔮', имя:'Сфера ' + ОСТРОВА[id].имя.replace(/^\S+\s/, ''), можноБросить:false });
@@ -2730,6 +2739,10 @@ const А_ВДРУГ = [
 let камниТревоги = [], сижуT = 0, тревогаСила = 1, гораГотова = false;
 /* ⛰ единственное место, где у планеты есть ВЫСОТА: склон горы */
 function уровеньЗемли(x, z) {
+  if (островТут==='vostorg') {
+    const o=ОСТРОВА.vostorg;
+    return Math.max(...вершиныВосторга.map(х=>высотаХолма(х,Math.hypot(x-o.x-х.x,z-o.z-х.z))));
+  }
   if (островТут !== 'trevoga') return 0;
   const o = ОСТРОВА.trevoga;
   const d = Math.hypot(x - o.x, z - o.z);
@@ -3850,6 +3863,8 @@ function сказатьЭмоцию(i) {
    Съел — и тебя уносит в тот мир, откуда он. Так и открываются новые острова.
    А если съесть три разных подряд — планета захлёбывается и даёт СБОЙ. */
 const ОБРАЗЦЫ = {
+  udiv:{em:'🥝', имя:'Киви с искоркой', цвет:0x6befd5, что:'откусишь — внутри вспыхнет звезда'},
+  vostorg:{em:'🍑', имя:'Певучий персик', цвет:0xff9858, что:'откусишь — услышишь звонкую ноту'},
   pechal: { em:'💧', имя:'Печальная вода',         цвет:0x3f8fe0, что:'выпьешь — будешь рыдать на ровном месте' },
   obida:  { em:'🫐', имя:'Обидные ягоды',          цвет:0x7f5af0, что:'съешь — и всё покажется обидным' },
   zloba:  { em:'🌶', имя:'Злобный перец',          цвет:0xff4d2a, что:'съешь — и закипишь' },
@@ -3892,7 +3907,7 @@ function поставитьОбразец(id, x, z) {
 }
 /* образцы стоят на видном месте в каждом мире — их видно по светящемуся значку */
 function расставитьОбразцы() {
-  const угол = { strah:2.2, radost:0.6, pechal:2.6, zloba:1.1, otvrat:3.6, len:0.4,
+  const угол = { udiv:0.8, vostorg:0.98, strah:2.2, radost:0.6, pechal:2.6, zloba:1.1, otvrat:3.6, len:0.4,
                  zhadn:2.9, skuka:1.7, obida:5.2, zaznai:4.3, styd:1.4, trevoga:4.9, lyubov:2.1, zavist:3.6 };
   for (const id in угол) {
     const o = ОСТРОВА[id]; if (!o) continue;
@@ -3941,7 +3956,7 @@ function съестьОбразец(id) {
    печаль, стыд и страх. А с обидой будет злоба, зависть и зазнайство. И то же самое сделаем
    с остальными островами». Какие ТРИ чувства съел подряд — из них и слеплен мир, куда выкинет,
    и все три сразу загораются на термометре. Не совпало ни с одним рецептом — как раньше, гора. */
-const ЧУВСТВО = { strah:'😨 страх', pechal:'😢 печаль', styd:'😳 стыд', zloba:'😠 злость',
+const ЧУВСТВО = { udiv:'😮 удивление', vostorg:'🤩 восторг', strah:'😨 страх', pechal:'😢 печаль', styd:'😳 стыд', zloba:'😠 злость',
   zavist:'😒 зависть', zaznai:'😎 зазнайство', radost:'😄 радость', len:'🥱 лень', skuka:'😑 скука',
   obida:'😤 обида', otvrat:'🤢 отвращение', zhadn:'🤑 жадность', trevoga:'😰 тревога', lyubov:'💗 любовь' };
 const СБОЙ_СМЕСИ = [
@@ -4118,7 +4133,7 @@ function наОстров(id, эмоция) {
         (э ? ' Но чтобы вернуться домой, тебе придётся справиться с ' + ПАДЕЖ[э.имя] + '.' : ''), 9);
   }, 1500);
   if (БЕЗ_МОСТА.has(id)) setTimeout(() => {
-    say('🚫 Отсюда моста нет. Выйти можно, только справившись.', 7); }, 3400);
+    if (островТут === id && !сферы[id]?.взята) say('🌉 Чтобы перейти мост, сначала собери сферу этого острова.', 7); }, 3400);
   else if (id === 'garmony') setTimeout(() => пульс('дом', true), 2000);
   /* ⚠️ Раньше задача писалась только для страха и дома — на остальных островах
      Марк не понимал, что делать («что мне надо делать, чтобы собрать сферу?»). */
@@ -4201,6 +4216,7 @@ function мостДомой(м) {
 /* ═══════════ 🎒 рюкзак и действия ═══════════ */
 function взять() {
   if (state !== 'play') return;
+  if (островТут==='udiv' && раскрытьБутон()) return;
   if (уКомпьютера()) { открытьКомпьютер(); return; }            // 🖥 дома у компьютера
   if (пылесосВСарае && !пылесосВСарае.взят &&
       Math.hypot(пылесосВСарае.x-player.x, пылесосВСарае.z-player.z) < 2.6) {
@@ -4461,11 +4477,139 @@ function новыйЦветОгонька() {
   return ЦВЕТ_СФЕРЫ[островТут] || 0xffe08a;
 }
 
+const бутоныУдивления = [];
+const вершиныВосторга = [
+  { x:-10, z:6, радиус:8, высота:3.4, нота:523.25, цвет:0xff8978 },
+  { x:10, z:2, радиус:9, высота:4.5, нота:659.25, цвет:0xffcb4a },
+  { x:0, z:-13, радиус:8, высота:5.8, нота:783.99, цвет:0xbc98ff },
+];
+
+function построитьРавнинуУдивления() {
+  const o = ОСТРОВА.udiv;
+  дискОстрова(o);
+  const форма = new THREE.SphereGeometry(1, 14, 10);
+  const лист = new THREE.MeshStandardMaterial({color:0x3d8a6b});
+  const места = [[-10,5,0xff9483], [9,2,0xbda2ff], [-3,-11,0xffdc71]];
+  for (const [i, [dx,dz,цвет]] of места.entries()) {
+    const g = new THREE.Group();
+    g.position.set(o.x+dx,0,o.z+dz); world.add(g);
+    const стебель = new THREE.Mesh(new THREE.CylinderGeometry(.13,.24,1.7,9),лист);
+    стебель.position.y=.85; g.add(стебель);
+    const лепестки = [], краска = new THREE.MeshStandardMaterial({color:цвет});
+    for (let k=0;k<6;k++) {
+      const ось = new THREE.Group();
+      ось.rotation.y=k*Math.PI/3; ось.position.y=1.55; g.add(ось);
+      const шарнир = new THREE.Group(); ось.add(шарнир);
+      const лепесток = new THREE.Mesh(форма,краска);
+      лепесток.scale.set(.55,1.02,.29); лепесток.position.set(0,.82,.30);
+      шарнир.add(лепесток); лепестки.push(шарнир);
+    }
+    const чудо = new THREE.Group(), сияние = светящийся(цвет,.6);
+    if (i===0) {
+      const планета = new THREE.Mesh(форма,сияние); планета.scale.setScalar(.52); чудо.add(планета);
+      const кольцо = new THREE.Mesh(new THREE.TorusGeometry(.76,.065,8,28),лист);
+      кольцо.rotation.x=1.12; чудо.add(кольцо);
+    } else if (i===1) {
+      const крыло = new THREE.MeshStandardMaterial({color:0x8a6af3});
+      for (const side of [-1,1]) {
+        const верх = new THREE.Mesh(форма,крыло); верх.scale.set(.42,.51,.13);
+        верх.position.set(side*.36,.20,0); верх.rotation.z=-side*.45; чудо.add(верх);
+        const низ = new THREE.Mesh(форма,сияние); низ.scale.set(.27,.30,.12);
+        низ.position.set(side*.26,-.28,0); чудо.add(низ);
+      }
+      const тельце = new THREE.Mesh(форма,лист); тельце.scale.set(.09,.42,.09); чудо.add(тельце);
+    } else {
+      const звезда = new THREE.Shape();
+      for (let k=0;k<10;k++) {
+        const a=Math.PI/2+k*Math.PI/5, r=k%2?.36:.82;
+        if (k===0) звезда.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+        else звезда.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+      }
+      звезда.closePath();
+      чудо.add(new THREE.Mesh(new THREE.ExtrudeGeometry(звезда,{depth:.16,bevelThickness:.045,bevelSize:.045,bevelSegments:1}),сияние));
+    }
+    чудо.visible=false; g.add(чудо);
+    бутоныУдивления.push({g,лепестки,чудо,раскрыт:false,фаза:0});
+  }
+  for (let i=0;i<22;i++) {
+    const a=i*2.4, r=6+(i%6)*2.6;
+    цветок(o.x+r*Math.cos(a),o.z+r*Math.sin(a));
+  }
+  поставитьСферу('udiv',o.x+5,o.z-13);
+}
+
+function раскрытьБутон() {
+  const б = бутоныУдивления.find(б => !б.раскрыт && Math.hypot(player.x-б.g.position.x,player.z-б.g.position.z)<3.4);
+  if (!б) return false;
+  б.раскрыт=true; б.чудо.visible=true;
+  const найдено=бутоныУдивления.filter(б=>б.раскрыт).length;
+  Snd.искра();
+  if (найдено===3) открытьСферу('udiv');
+  else bigMsg('🌷 Раскрыто бутонов: '+найдено+' из 3',2,'#fce7ff');
+  return true;
+}
+
+function высотаХолма(холм, радиус) {
+  if (радиус>=холм.радиус) return 0;
+  return холм.высота*(1+Math.cos(Math.PI*радиус/холм.радиус))/2;
+}
+function построитьХолмыВосторга() {
+  const o=ОСТРОВА.vostorg;
+  дискОстрова(o);
+  for (const [i,х] of вершиныВосторга.entries()) {
+    const профиль=[];
+    for (let k=12;k>=0;k--) {
+      const r=х.радиус*k/12;
+      профиль.push(new THREE.Vector2(r,высотаХолма(х,r)));
+    }
+    const склон=new THREE.Mesh(new THREE.LatheGeometry(профиль,36),
+      new THREE.MeshStandardMaterial({color:[0x84b966,0x9bcd72,0x70b590][i],roughness:.95}));
+    склон.position.set(o.x+х.x,0,o.z+х.z); склон.receiveShadow=true; world.add(склон);
+    const g=new THREE.Group(); g.position.set(склон.position.x,х.высота,склон.position.z); world.add(g);
+    const м=светящийся(х.цвет,.22);
+    const диск=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.5,.26,24),м); диск.position.y=.12; g.add(диск);
+    const нота=new THREE.Group(); нота.position.y=1.8; g.add(нота);
+    const овал=new THREE.Mesh(new THREE.SphereGeometry(.38,14,8),м); овал.scale.set(1,.65,.64); нота.add(овал);
+    const штиль=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.91,8),м);
+    штиль.position.set(.30,.45,0); нота.add(штиль);
+    const флаг=new THREE.Mesh(new THREE.SphereGeometry(.28,12,8),м);
+    флаг.scale.set(1,.46,.45); флаг.position.set(.52,.81,0); флаг.rotation.z=-.4; нота.add(флаг);
+    Object.assign(х,{g,знак:нота,материал:м,звучал:false});
+  }
+  поставитьСферу('vostorg',o.x+10,o.z-13);
+}
+
+function обновитьНовыеОстрова(dt) {
+  if (эфир) return;
+  if (островТут==='udiv') {
+    for (const б of бутоныУдивления) {
+      if (!б.раскрыт) continue;
+      б.фаза=Math.min(1,б.фаза+dt*1.6);
+      for (const л of б.лепестки) л.rotation.x=б.фаза*1.35;
+      б.чудо.position.y=1.8+б.фаза*1.8+Math.sin(time*2)*.12;
+      б.чудо.rotation.y=time*.8;
+    }
+  } else if (островТут==='vostorg') {
+    for (const х of вершиныВосторга) {
+      х.знак.rotation.y=time*.7;
+      if (х.звучал || Math.hypot(player.x-х.g.position.x,player.z-х.g.position.z)>1.6) continue;
+      х.звучал=true; х.материал.emissiveIntensity=1.2;
+      Snd.тон(х.нота,.7,'triangle',.16);
+      const собрано=вершиныВосторга.filter(в=>в.звучал).length;
+      if (собрано===3) {
+        открытьСферу('vostorg');
+        if (Snd.ctx) вершиныВосторга.forEach((в,i)=>Snd.тон(в.нота,.5,'triangle',.13,undefined,Snd.ctx.currentTime+.35+i*.25));
+      } else bigMsg('🎶 Прозвучало вершин: '+собрано+' из 3',2,'#ffefac');
+    }
+  }
+}
+
 /* ═══════════ мир и цикл ═══════════ */
 построитьГармонию(); построитьЛабиринт();
 построитьПляж(); построитьРеку(); построитьВулкан(); построитьБолото(); построитьПустыню();
 построитьПропасть(); построитьПоляну(); построитьЛес(); построитьЗеркала();
 построитьПещеру(); построитьГору(); построитьМоре(); построитьСад();   // 🕯 ⛰ 💗 новые миры Марка
+построитьРавнинуУдивления(); построитьХолмыВосторга();
 расставитьОбразцы();                     // 🧪 образцы эмоций во всех мирах
 // 🌉 мосты открыты сразу: Марк хочет ХОДИТЬ по планете, а не смотреть на диски
 мост('garmony', 'strah', true);
@@ -4489,6 +4633,8 @@ function новыйЦветОгонька() {
 мост('skuka',  'strah', true);
 мост('strah',  'otvrat',true);
 мост('otvrat', 'radost',true);
+мост('radost','udiv',true);
+мост('udiv','vostorg',true);
 epVisual(()=>epPolish());
 epVisual(()=>epNaturePolish());
 player.неуязв = 0;
@@ -4510,7 +4656,7 @@ function loop(now) {
     if (!эфир) двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
     обновитьЗеркала(dt); обновитьПещеру(dt); обновитьГору(dt); обновитьМоре(dt); обновитьСад(dt); обновитьОбразцы(dt);
-    обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt); обновитьПомощников(dt);
+    обновитьНовыеОстрова(dt); обновитьСферы(dt); обновитьВихрь(dt); обновитьПравила(dt); морфГоворит(dt); обновитьПомощников(dt);
     обновитьГостей(dt); обновитьМорфаГостя(dt); письмаДрузей(dt);
     обновитьНочь(dt); обновитьКомпьютеры(dt); эфир ? камераЭфира(dt) : камера(dt, false);
     мыслиГероя(dt); обнимашкиМишки(dt); обновитьHud(); обновитьПузыри(dt);
@@ -4762,6 +4908,24 @@ $('achClose').onclick = () => $('ach').classList.remove('show');
    Значки рисуем сами на canvas — игра остаётся одним файлом и работает офлайн.
    По карте видно, где ты (а когда доделаем «вдвоём» — и где напарник). */
 const ЗНАЧКИ = {
+  udiv(g,w,h) {
+    зал(g,w,h,'#b6e2e5','#ffdfc7');
+    g.fillStyle='#68a887'; g.fillRect(0,h*.65,w,h*.35);
+    for (const x of [.23,.5,.77]) {
+      g.fillStyle='#33765c'; g.fillRect(w*x-2,h*.50,4,h*.29);
+      for (const side of [-1,1]) {
+        g.fillStyle=side<0?'#e894ae':'#ffc4cb'; g.beginPath();
+        g.ellipse(w*x+side*w*.037,h*.45,w*.053,h*.17,side*.43,0,7); g.fill();
+      }
+    }
+  },
+  vostorg(g,w,h) {
+    зал(g,w,h,'#92c4da','#ffe0a6');
+    for (const [x,y,r,c] of [[.75,.9,.46,'#72ab83'],[.25,.94,.42,'#8db664'],[.5,1.15,.52,'#a5c77a']]) {
+      g.fillStyle=c; g.beginPath(); g.ellipse(x*w,y*h,r*w,.52*h,0,0,7); g.fill();
+    }
+    g.fillStyle='#65476b'; g.font='bold '+Math.round(h*.33)+'px system-ui'; g.fillText('♫',w*.59,h*.37);
+  },
   garmony: (g, w2, h2) => {                       // 💛 золотой фон и маяк с лучом
     зал(g, w2, h2, '#f6c453', '#e09b2d');
     g.fillStyle = '#fff6e0'; g.fillRect(w2*0.45, h2*0.32, w2*0.1, h2*0.44);
@@ -4963,7 +5127,7 @@ const КАРТА_ПОРЯДОК = [
   ['skuka','😑 Скучная поляна'], ['obida','🌲 Лес обиды'],
   ['zaznai','🪞 Зеркала зазнайства'], ['styd','🕯 Пещера стыда'],
   ['trevoga','⛰ Гора тревожности'], ['lyubov','💗 Море любви'],
-  ['zavist','🌹 Сад зависти'],
+  ['zavist','🌹 Сад зависти'], ['udiv','🌷 Равнина удивления'], ['vostorg','🎶 Холмы восторга'],
 ];
 /* 💗 Море любви Марк уже нарисовал словами, а острова ещё нет — показываем
    картинку и честно пишем «скоро», а не прячем под «???». */
@@ -4977,7 +5141,7 @@ let открытыеМиры = new Set(['garmony', 'strah', 'pechal', 'zloba', '
    чтобы справиться со своей эмоцией. Тогда планета сама вернёт домой. */
 /* ⚠️ БЫЛО 'zhadnost' — мира с таким id НЕТ (он 'zhadn'), правило не работало вовсе.
    Список Марка (19.09): пустыня лени, лес обиды, море любви и все новые острова. */
-const БЕЗ_МОСТА = new Set(['zhadn', 'zloba', 'len', 'obida', 'zaznai', 'styd', 'trevoga', 'lyubov', 'zavist']);
+const БЕЗ_МОСТА = new Set(['zhadn', 'zloba', 'len', 'obida', 'zaznai', 'styd', 'trevoga', 'lyubov', 'zavist', 'udiv', 'vostorg']);
 function показатьКарту() {
   const box = $('mapGrid'); box.innerHTML = '';
   КАРТА_ПОРЯДОК.forEach(([id, имя]) => {
@@ -5051,6 +5215,7 @@ function мкФигура(и, высота, корень) {
    Либо посмотреть на пойманных страхов и фобий.»
    Телевизор мира показывает НОВОСТИ своего острова; большой компьютер — только дома. */
 const КЛЮЧИ_МИРОВ = {
+  udiv:['равнин','удивлен'], vostorg:['холм','восторг'],
   garmony:['гармон','дом','маяк'], strah:['лабиринт'], radost:['пляж','радост'],
   pechal:['рек','печал'], zloba:['вулкан','злоб','злост'], otvrat:['болот','отвращ'],
   len:['пустын','лени','лень'], zhadn:['пропаст','жадн','бездн'], skuka:['скучн','полян','скук'],
