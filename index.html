@@ -201,7 +201,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "af83bbb8cf";</script>
+  <script>window.__APP_VER = "09f86e0d59";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -327,7 +327,8 @@ const ri  = (a, b) => Math.floor(rnd(a, b + 1));
    мягкие тени, киношная тонировка, всё из круглых форм и тел вращения.
    ═══════════════════════════════════════════════════════════════════ */
 const renderer = new THREE.WebGLRenderer({ canvas:$('cv'), antialias:true, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const touchGraphics = matchMedia('(pointer:coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio, touchGraphics ? 1.25 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
@@ -357,7 +358,7 @@ addEventListener('resize', () => {
 
 const hemi = new THREE.HemisphereLight(0xdff0ff, 0x4a5a3a, 0.85); scene.add(hemi);
 const sun  = new THREE.DirectionalLight(0xfff4e0, 1.15); sun.position.set(24, 44, 18);
-sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.castShadow = true; sun.shadow.mapSize.set(touchGraphics ? 1024 : 2048, touchGraphics ? 1024 : 2048);
 sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
 sun.shadow.camera.top = 70;   sun.shadow.camera.bottom = -70;
 sun.shadow.camera.near = 1;   sun.shadow.camera.far = 140;
@@ -1328,7 +1329,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => keys[e.code] = false);
 let look = null, стикИд = null, стик = { x:0, y:0 };
 const стикЭл = $('stick');
-стикЭл.addEventListener('pointerdown', e => { e.preventDefault(); стикИд = e.pointerId; двигСтик(e.clientX, e.clientY); });
+стикЭл.addEventListener('pointerdown', e => { e.preventDefault(); if (стикИд !== null) return; стикИд = e.pointerId; стикЭл.setPointerCapture(e.pointerId); двигСтик(e.clientX, e.clientY); });
 renderer.domElement.addEventListener('pointerdown', e => {
   if (state !== 'play') return; look = { id:e.pointerId, x:e.clientX, y:e.clientY }; });
 addEventListener('pointermove', e => {
@@ -1341,6 +1342,13 @@ const отпустить = e => {
   if (look && e.pointerId === look.id) look = null;
   if (стикИд === e.pointerId) { стикИд = null; стик = { x:0, y:0 }; $('knob').style.transform = ''; } };
 addEventListener('pointerup', отпустить); addEventListener('pointercancel', отпустить);
+стикЭл.addEventListener('lostpointercapture', отпустить);
+function сброситьВвод() {
+  for (const key in keys) delete keys[key];
+  стикИд = null; стик = {x:0,y:0}; look = null; $('knob').style.transform = '';
+}
+addEventListener('blur', сброситьВвод);
+document.addEventListener('visibilitychange', () => { if (document.hidden) сброситьВвод(); });
 function двигСтик(cx, cy) {
   const r = стикЭл.getBoundingClientRect();
   let dx = cx-(r.left+r.width/2), dy = cy-(r.top+r.height/2);
@@ -4034,7 +4042,7 @@ let hearts = 3, огоньки = 0, рюкзак = [], вихрьВзят = fals
    Дома, на острове Гармонии, банка сама выгружается в компьютер. Набор банок — ×4. */
 let вБанке = [], банкаПолнаКд = 0;
 const вместимостьБанки = () => естьЖ('banki') ? 12 : 3;
-let state = 'menu', time = 0, стоюT = 0, мостКд = 0, наМостуБыл = false, запертКд = 0, лаваКд = 0;
+let state = 'menu', time = 0, стоюT = 0, мостКд = 0, текущийМост = null, запертКд = 0, лаваКд = 0;
 
 function обновитьHud() {
   $('hearts').textContent = '❤️'.repeat(Math.max(0,hearts)) + '🖤'.repeat(Math.max(0,3-hearts));
@@ -4072,7 +4080,7 @@ function наОстров(id, эмоция) {
   if (id === 'zavist') player.z = o.z + 14;
   player.vy = 0; player.неуязв = 1.2;
   player.y = уровеньЗемли(player.x, player.z);        // ⛰ на склоне горы земля выше нуля
-  мостКд = 1.6; наМостуБыл = false;      // ⚠️ иначе мост подхватывает прямо на входе
+  мостКд = 1.6; текущийМост = null;      // ⚠️ иначе мост подхватывает прямо на входе
   scene.background.setHex(o.небо); scene.fog.color.setHex(o.небо);
   небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);          // 🌤 градиент неба под настроение мира
   // ⚠️ правило из «Поместья»: темнота должна быть ЧИТАЕМОЙ, иначе чёрный экран
@@ -4368,7 +4376,7 @@ function двигать(dt) {
     /* 🚫 ПРАВИЛО МАРКА: из этих миров на мост даже НЕ ЗАЙТИ, пока не справился.
        «Справился» = сфера этого мира у тебя. Иначе планета отталкивает назад. */
     const заперт = БЕЗ_МОСТА.has(островТут) && !(сферы[островТут] && сферы[островТут].взята);
-    const м = (мостКд > 0 || заперт) ? null : мосты.find(m2 => {
+    const м = (мостКд > 0 || заперт) ? null : текущийМост || мосты.find(m2 => {
       if (!((m2.от === островТут || m2.до === островТут) && m2.открыт)) return false;
       if (Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) >= 2.6) return false;
       const в = (nx-m2.x0)*m2.ux + (nz-m2.z0)*m2.uz;
@@ -4384,12 +4392,16 @@ function двигать(dt) {
         else наОстров(другой);
         нарисоватьГероя(dt); return;
       }
-      if (!наМостуБыл) {                    // предупреждаем, что ты ступил на мост
-        наМостуБыл = true;
+      if (!текущийМост) {                    // предупреждаем, что ты ступил на мост
+        текущийМост = м;
         say('🌉 Ты на мосту в ' + ОСТРОВА[другой].имя + '. Дойдёшь до конца — перейдёшь.', 3.5);
       }
       const бег = (nx - player.x)*0.5, бегZ = (nz - player.z)*0.5;
-      player.x = nx + бег; player.z = nz + бегZ;       // 🏃 на мосту шаг чуть шире
+      const px = nx + бег - м.x0, pz = nz + бегZ - м.z0;
+      const вперёд = px*м.ux + pz*м.uz;
+      const вбок = clamp(-px*м.uz + pz*м.ux, -1.15, 1.15);
+      player.x = м.x0 + вперёд*м.ux - вбок*м.uz;
+      player.z = м.z0 + вперёд*м.uz + вбок*м.ux;
       player.наЗемле = true;
       player.y = -Math.sin(clamp(вдоль/м.len, 0, 1)*Math.PI)*1.5;
       наМосту = true;
@@ -4418,7 +4430,7 @@ function двигать(dt) {
     player.y += player.vy*dt;
     if (player.y <= пол) { player.y = пол; player.vy = 0; player.наЗемле = true; }
   }
-  if (!наМосту) наМостуБыл = false;
+  if (!наМосту) текущийМост = null;
   if (мостКд > 0) мостКд -= dt;
   if (player.неуязв > 0) player.неуязв -= dt;
   нарисоватьГероя(dt);
@@ -4532,28 +4544,28 @@ $('playBtn').onclick = () => {
    Всё синтезом, без файлов: игра остаётся одним файлом и работает офлайн.
    Спокойная — дома, жуткая — в лабиринте, жёсткая — на вулкане, грустная — у реки. */
 const Snd = {
-  ctx:null, тема:null, таймер:null, шаг:0,
+  ctx:null, тема:null, таймер:null, канал:null, шаг:0,
   вкл(){ if (!this.ctx) { try { this.ctx = new (window.AudioContext||window.webkitAudioContext)(); } catch(_){} }
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
-  тон(f, д, тип='sine', v=0.14, до){ if (!this.ctx) return;
+  тон(f, д, тип='sine', v=0.14, до, when=this.ctx?.currentTime, output=this.ctx?.destination){ if (!this.ctx) return;
     const C = this.ctx, o = C.createOscillator(), g = C.createGain();
-    o.type = тип; o.frequency.value = f; if (до) o.frequency.linearRampToValueAtTime(до, C.currentTime+д);
-    g.gain.setValueAtTime(v, C.currentTime); g.gain.exponentialRampToValueAtTime(0.001, C.currentTime+д);
-    o.connect(g); g.connect(C.destination); o.start(); o.stop(C.currentTime+д); },
-  шум(д, v, частота){ if (!this.ctx) return;
+    o.type = тип; o.frequency.value = f; if (до) o.frequency.linearRampToValueAtTime(до, when+д);
+    g.gain.setValueAtTime(v, when); g.gain.exponentialRampToValueAtTime(0.001, when+д);
+    o.connect(g); g.connect(output); o.start(when); o.stop(when+д); },
+  шум(д, v, частота, when=this.ctx?.currentTime, output=this.ctx?.destination){ if (!this.ctx) return;
     const C = this.ctx, n = C.sampleRate*д, b = C.createBuffer(1, n, C.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = (Math.random()*2-1) * (1 - i/n);
     const src = C.createBufferSource(); src.buffer = b;
     const f = C.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = частота || 700;
     const g = C.createGain(); g.gain.value = v;
-    src.connect(f); f.connect(g); g.connect(C.destination); src.start(); },
+    src.connect(f); f.connect(g); g.connect(output); src.start(when); },
   шагСтраха(близко){ this.шум(0.16, 0.06 + близко*0.16, 200 + близко*260); },
   искра(){ this.тон(880, 0.14, 'triangle', 0.14, 1400); },
   победа(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>this.тон(f,0.26,'triangle',0.16),i*110)); },
   урон(){ this.тон(180, 0.3, 'sawtooth', 0.2, 80); },
   музыка(имя){
-    if (this.тема === имя) return; this.тема = имя;
-    clearInterval(this.таймер); this.вкл(); if (!this.ctx) return;
+    if (this.тема === имя) return; this.стоп(); this.тема = имя;
+    this.вкл(); if (!this.ctx) return;
     const ноты = {
       calm:  { такт:1400, бас:[110,98,110,131], лид:[440,523,494,392], тип:'sine',     v:0.05 },
       fear:  { такт:900,  бас:[65,69,65,58],    лид:[277,294,277,233], тип:'triangle', v:0.05 },
@@ -4561,16 +4573,29 @@ const Snd = {
       sad:   { такт:1700, бас:[98,87,98,82],    лид:[392,349,330,294], тип:'sine',     v:0.045 },
     }[имя] || null;
     if (!ноты) return;
+    this.канал = this.ctx.createGain(); this.канал.connect(this.ctx.destination);
     this.музШаг = 0;
-    this.таймер = setInterval(() => {
-      const i = this.музШаг++ % 4;
-      this.тон(ноты.бас[i], ноты.такт/1100, ноты.тип, ноты.v);
-      this.тон(ноты.лид[i], ноты.такт/1500, ноты.тип === 'sawtooth' ? 'square' : 'triangle', ноты.v*0.6);
-      if (имя === 'anger' && i % 2 === 0) this.шум(0.1, 0.05, 300);        // рык вулкана
-      if (имя === 'fear'  && i === 3) this.шум(0.26, 0.035, 420);          // шорох в темноте
-    }, ноты.такт);
+    const beat = ноты.такт/1000;
+    let next = this.ctx.currentTime + beat;
+    const schedule = () => {
+      if (document.hidden || this.ctx.state !== 'running') return;
+      const now = this.ctx.currentTime;
+      if (next < now) { const missed = Math.ceil((now-next)/beat); this.музШаг += missed; next += missed*beat; }
+      while (next < now + Math.max(3, beat*4)) {
+        const i = this.музШаг++ % 4;
+        this.тон(ноты.бас[i], ноты.такт/1100, ноты.тип, ноты.v, undefined, next, this.канал);
+        this.тон(ноты.лид[i], ноты.такт/1500, ноты.тип === 'sawtooth' ? 'square' : 'triangle', ноты.v*0.6, undefined, next, this.канал);
+        if (имя === 'anger' && i % 2 === 0) this.шум(0.1, 0.05, 300, next, this.канал);        // рык вулкана
+        if (имя === 'fear'  && i === 3) this.шум(0.26, 0.035, 420, next, this.канал);          // шорох в темноте
+        next += beat;
+      }
+    };
+    schedule(); this.таймер = setInterval(schedule, 80);
   },
-  стоп(){ clearInterval(this.таймер); this.тема = null; },
+  стоп(){
+    clearInterval(this.таймер); this.таймер = null; this.тема = null;
+    if (this.канал) { this.канал.disconnect(); this.канал = null; }
+  },
 };
 const МУЗЫКА_ОСТРОВА = { garmony:'calm', strah:'fear', zloba:'anger', pechal:'sad', radost:'calm',
   otvrat:'fear', len:'sad', zhadn:'anger', skuka:'sad', obida:'fear', zaznai:'calm',
@@ -5292,7 +5317,7 @@ window.__dbg = {
   get balls(){ return мячиРадости.map(м => ({ x:+м.x.toFixed(1), z:+м.z.toFixed(1), взят:м.взят })); },
   get lights(){ return огонькиПечали.map(о => ({ x:+о.x.toFixed(1), z:+о.z.toFixed(1), горит:о.горит })); },
   get task(){ return $('task').textContent; },
-  get bridgeOn(){ return наМостуБыл; },
+  get bridgeOn(){ return !!текущийМост; },
   get finale(){ return { собрано:Object.values(сферы).filter(x => x.взята).length,
     всего:Object.keys(сферы).length, экран:!$('финал').classList.contains('hidden') }; },
   takeAllSpheres(){ Object.keys(сферы).forEach(id => { открытьСферу(id); });
