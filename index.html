@@ -175,14 +175,23 @@
     background:#101828ee; border:2px solid #ffe08a88; border-radius:14px; padding:9px 16px;
     font-weight:900; opacity:0; transition:opacity .3s; pointer-events:none; }
   #achToast.show { opacity:1; }
-  #mapBox { background:#101828; border:2px solid #ffffff2a; border-radius:18px; padding:18px;
-    width:min(520px,94vw); text-align:center; }
-  #mapGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .mapIt { background:#ffffff0c; border:2px solid #ffffff1a; border-radius:14px; padding:8px 6px; }
-  .mapIt.here { border-color:#ffe08a; box-shadow:0 0 16px #ffe08a55; }
-  .mapIt.lock { opacity:.55; }
-  .mapIt canvas { width:100%; height:auto; border-radius:10px; display:block; }
-  .mapIt .nm { font-size:12px; font-weight:800; margin-top:5px; }
+  #map { background:#000; }
+  #mapBox { background:#000; border:0; border-radius:0; padding:18px;
+    width:100vw; height:100dvh; box-sizing:border-box; text-align:center; }
+  #mapViewport { overflow:auto; max-width:100%; touch-action:pan-x pan-y; }
+  #mapGrid { position:relative; width:980px; height:760px; margin:0 auto; }
+  .mapIt { position:absolute; width:126px; padding:0; border:0; background:transparent;
+    color:#e8eefc; cursor:pointer; transform:translate(-50%,-50%); font:inherit; }
+  .mapIt canvas { width:84px; height:84px; border:3px solid #566074; border-radius:50%;
+    display:block; margin:0 auto; box-shadow:0 0 16px #ffffff18; transition:transform .15s; }
+  .mapIt:hover canvas,.mapIt:focus-visible canvas { transform:scale(1.09); border-color:#bfe4ff; }
+  .mapIt:focus-visible { outline:2px solid #bfe4ff; border-radius:15px; }
+  .mapIt.here canvas { border-color:#ffe08a; box-shadow:0 0 22px #ffe08a66; }
+  .mapIt .nm { display:block; font-size:12px; line-height:1.25; font-weight:800; margin-top:7px; }
+  #mapClose { background:#253149; color:#fff; }
+  body:has(#map.show) #mkl-bar { display:none; }
+  @media(max-width:600px) { #mapBox { padding:12px 4px; } #mapGrid { width:760px; height:680px; }
+    .mapIt { width:102px; } .mapIt canvas { width:66px; height:66px; } .mapIt .nm { font-size:11px; } }
   #bagBox { background:#101828; border:2px solid #ffffff2a; border-radius:18px; padding:18px; width:min(440px,90vw); }
   .slot { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px;
     background:#ffffff0d; margin-bottom:7px; font-weight:700; }
@@ -193,7 +202,7 @@
     background:#200; padding:8px; border-radius:8px; display:none; white-space:pre-wrap; }
   /* Астра: карта помещается на телефоне, её кнопка закрытия доступна. */
   #mapBox { max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); overflow:auto; overscroll-behavior:contain; touch-action:pan-y; }
-  #mapBox canvas { touch-action:pan-y; }
+  #mapBox canvas { touch-action:pan-x pan-y; }
   #mapClose { position:sticky; bottom:0; z-index:1; }
 
 </style>
@@ -209,7 +218,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#c81414">
-  <script>window.__APP_VER = "76c2e2e439";</script>
+  <script>window.__APP_VER = "07e3187359";</script>
 </head>
 <body>
 <div id="err"></div>
@@ -257,7 +266,8 @@
 <div id="map"><div id="mapBox">
   <h1 style="font-size:22px;margin-bottom:8px">🗺 КАРТА ПЛАНЕТЫ</h1>
   <div class="sub" style="font-size:13px;margin-bottom:8px" id="mapWho">Ты — 💛 Остров Гармонии</div>
-  <div id="mapGrid"></div>
+  <div class="sub" style="font-size:13px;margin-bottom:8px">Нажми на кружок — посмотри остров. Карту можно прокручивать.</div>
+  <div id="mapViewport"><div id="mapGrid"></div></div>
   <div class="sub" style="font-size:13px;margin-top:8px" id="mapFears">🌀 Пойманных страхов в компьютере: 0</div>
   <button class="btn" id="mapClose" style="margin-top:10px">Закрыть</button>
 </div></div>
@@ -1337,6 +1347,7 @@ addEventListener('keydown', e => {
   /* ⚠️ 26.09: в русской раскладке «у», «а», «ц», «ф», «ы», «в» — это клавиши E, F, W, A, S, D.
      Пока пишешь в телефоне или компьютере, герой ходил, хватал вещи и щёлкал ловушкой. */
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if($('map').classList.contains('show')){if(e.key==='Escape')$('map').classList.remove('show');return;}
   if (эфир) {
     if (e.key==='ArrowLeft' || e.key==='ArrowRight') {
       e.preventDefault(); if (!e.repeat) листатьОстровы(e.key==='ArrowLeft'?-1:1);
@@ -1382,7 +1393,7 @@ function двигСтик(cx, cy) {
 $('jumpBtn').addEventListener('pointerdown', e => { e.preventDefault(); прыжок(); });
 $('useBtn').addEventListener('pointerdown', e => { e.preventDefault(); взять(); });
 $('vacBtn').addEventListener('pointerdown', e => { e.preventDefault(); вихрьТумблер(); });
-function прыжок() { if (state === 'play' && player.наЗемле && !['вКлетке','танец'].includes(приключение?.этап)) { player.vy = естьЖ('pruzhinki') ? 10.6 : 7.4; player.наЗемле = false; } }
+function прыжок() { if (state === 'play' && !лестницаЖадности && player.наЗемле && !['вКлетке','танец'].includes(приключение?.этап)) { player.vy = естьЖ('pruzhinki') ? 10.6 : 7.4; player.наЗемле = false; } }
 
 /* ── сообщения ── */
 let msgT = 0, sayT = 0;
@@ -1559,7 +1570,7 @@ const ЗАДАЧА_МИРА = {
   len:    'Просто иди и не залёживайся: пройди по пустыне, не останавливаясь.',
   radost: 'Поиграй: тронь пять разноцветных мячей на пляже.',
   pechal: 'Зажги три тёплых огонька-воспоминания у реки.',
-  zhadn:  'Открой рюкзак и положи одну вещь на землю. Станет легче — и выберешься.',
+  zhadn:  'На дне бери кристаллы кнопкой ✋. Поделись у ящика 🎁 или через рюкзак. У лестницы нажми ✋, затем забери сферу наверху.',
   skuka:  'Придумай себе игру: тронь палку, камень и банку.',
   zaznai: 'Зеркала растут, пока ты на себя смотришь. Отвернись от каждого — и они потускнеют. Всех пять погасишь — сфера твоя.',
   obida:  'Лучший способ от обиды — уверенность в себе. Вспомни, на что ты был обижен, и перестань так думать: выбери правдивую мысль три раза.',
@@ -2077,83 +2088,125 @@ function обновитьВулкан(dt) {
   }
 }
 
-/* ═══════ 🕳 ПРОПАСТЬ ЖАДНОСТИ (мир Марка) ═══════
-   Золото повсюду, и оно САМО липнет к тебе. Чем больше несёшь — тем тяжелее шаг.
-   Выход один (правило Марка): открыть рюкзак и ПОЛОЖИТЬ ВЕЩЬ НА ЗЕМЛЮ. */
-let золото = [], несуЗолота = 0, отданоТут = 0;
-function построитьПропасть() {
-  const o = ОСТРОВА.zhadn; дискОстрова(o);
-  /* 🕳 НАСТОЯЩАЯ БЕЗДНА (просьба Марка: «чтобы было видно, что ты в бездне,
-     а не на островке»). Шахта уходит вниз на сто метров, стены видно изнутри,
-     по ним спускаются уступы, а дно только угадывается по золотому свечению. */
-  const ЯМА_R = 13, ЯМА_H = 110;
-  const шахта = new THREE.Mesh(new THREE.CylinderGeometry(ЯМА_R, ЯМА_R*0.72, ЯМА_H, 40, 6, true),
-    new THREE.MeshStandardMaterial({ color:0x3a2c10, roughness:1, side:THREE.BackSide,
-      emissive:0x140c02, emissiveIntensity:0.6 }));
-  шахта.position.set(o.x, -ЯМА_H/2 + 0.4, o.z); world.add(шахта);
-  /* уступы по спирали — по ним видно, КАК глубоко */
-  for (let i = 0; i < 26; i++) {
-    const a = i*0.9, гл = -3 - i*3.4, рад = ЯМА_R - 1.2 - (i*0.18);
-    const у = new THREE.Mesh(new THREE.BoxGeometry(rnd(2.5, 5), 0.6, rnd(1.6, 3)),
-      new THREE.MeshStandardMaterial({ color:0x4a3a18, roughness:0.95 }));
-    у.position.set(o.x + Math.cos(a)*рад, гл, o.z + Math.sin(a)*рад);
-    у.rotation.y = -a; world.add(у);
-    if (i % 3 === 0) {                              // редкие золотые блики в глубине
-      const б = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), светящийся(0xffd24a, 1.6));
-      б.position.set(o.x + Math.cos(a+0.6)*(рад-1.5), гл + 0.9, o.z + Math.sin(a+0.6)*(рад-1.5));
-      world.add(б);
-    }
+/* Пропасть: настоящая глубина, кристаллы и лестница к выходу. */
+const ДНО_ЖАДНОСТИ=-18, РАДИУС_ЯМЫ=12;
+let золото=[], несуЗолота=0, отданоТут=0, лестницаЖадности=null, потеряноНаЛестнице=0;
+function построитьПропасть(){
+  const o=ОСТРОВА.zhadn;
+  const камень=new THREE.MeshStandardMaterial({color:0x8a7040,roughness:.95});
+  const внутри=new THREE.MeshStandardMaterial({color:0x786040,roughness:1,side:THREE.BackSide});
+  const добавить=(geo,mat,x,y,z)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.receiveShadow=true;world.add(m);return m;};
+  const край=добавить(new THREE.RingGeometry(РАДИУС_ЯМЫ,o.r,64),камень,o.x,0,o.z);край.rotation.x=-Math.PI/2;
+  добавить(new THREE.CylinderGeometry(o.r,o.r-1,3,64,1,true),камень,o.x,-1.5,o.z);
+  добавить(new THREE.CylinderGeometry(РАДИУС_ЯМЫ,РАДИУС_ЯМЫ,18,64,1,true),внутри,o.x,-9,o.z);
+  const пол=добавить(new THREE.CircleGeometry(РАДИУС_ЯМЫ,64),камень,o.x,ДНО_ЖАДНОСТИ,o.z);пол.rotation.x=-Math.PI/2;
+  // Вода не должна перекрывать вход в шахту. Отсекаем её только под этим островом.
+  const pos=мореГео.attributes.position,idx=мореГео.index.array,keep=[];
+  for(let i=0;i<idx.length;i+=3){
+    const x=(pos.getX(idx[i])+pos.getX(idx[i+1])+pos.getX(idx[i+2]))/3;
+    const z=-(pos.getY(idx[i])+pos.getY(idx[i+1])+pos.getY(idx[i+2]))/3;
+    if(Math.hypot(x-o.x,z-o.z)>20)keep.push(idx[i],idx[i+1],idx[i+2]);
   }
-  /* дно: только зарево, самого дна не видно */
-  const зарево = new THREE.Mesh(new THREE.CircleGeometry(ЯМА_R*0.8, 30), светящийся(0xffb020, 1.2));
-  зарево.rotation.x = -Math.PI/2; зарево.position.set(o.x, -ЯМА_H + 6, o.z); world.add(зарево);
-  const свЯмы = new THREE.PointLight(0xffb020, 9, 60, 1.4);
-  свЯмы.position.set(o.x, -ЯМА_H + 12, o.z); world.add(свЯмы);
-  /* каменный парапет, чтобы не свалиться вниз случайно */
-  for (let i = 0; i < 30; i++) {
-    const a1 = i/30*6.283, a2 = (i+1)/30*6.283, R = ЯМА_R + 1.4;
-    walls.push({ x1:o.x + Math.cos(a1)*R, z1:o.z + Math.sin(a1)*R,
-                 x2:o.x + Math.cos(a2)*R, z2:o.z + Math.sin(a2)*R });
-    const к = new THREE.Mesh(new THREE.BoxGeometry(2.6, rnd(0.9, 1.5), 1.1),
-      new THREE.MeshStandardMaterial({ color:0x6b5a2a, roughness:0.95 }));
-    к.position.set(o.x + Math.cos(a1+0.1)*R, 0.6, o.z + Math.sin(a1+0.1)*R);
-    к.rotation.y = -a1; к.castShadow = к.receiveShadow = true; world.add(к);
+  мореГео.setIndex(keep);
+  for(let i=0;i<32;i++){
+    const a=(i+.5)/32*Math.PI*2;
+    if(Math.abs(a-Math.PI/2)<.23)continue; // проход от лестницы к сфере
+    const x=o.x+Math.cos(a)*12.7,z=o.z+Math.sin(a)*12.7;
+    const m=добавить(new THREE.BoxGeometry(2.2,.85,.6),камень,x,.42,z);m.rotation.y=-a;
+    const a0=i/32*Math.PI*2,a1=(i+1)/32*Math.PI*2;
+    walls.push({x1:o.x+Math.cos(a0)*12.7,z1:o.z+Math.sin(a0)*12.7,x2:o.x+Math.cos(a1)*12.7,z2:o.z+Math.sin(a1)*12.7});
   }
-  for (let i = 0; i < 18; i++) {                    // 🏺 сундуки и слитки по краю
-    const a = rnd(0,6.3), r = rnd(14, o.r-3);
-    const сл = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.7),
-      new THREE.MeshStandardMaterial({ color:0xffd24a, roughness:0.25, metalness:0.95 }));
-    сл.position.set(o.x + Math.cos(a)*r, 0.3, o.z + Math.sin(a)*r);
-    сл.rotation.y = rnd(0,3); сл.castShadow = true; world.add(сл);
+  const деревоМат=new THREE.MeshStandardMaterial({color:0xbb884a,roughness:.8});
+  for(const dx of [-.75,.75])добавить(new THREE.CylinderGeometry(.13,.13,19.5,10),деревоМат,o.x+dx,-8.6,o.z+11);
+  for(let y=ДНО_ЖАДНОСТИ+.4;y<1;y+=.65)добавить(new THREE.BoxGeometry(1.7,.13,.28),деревоМат,o.x,y,o.z+11);
+  const уступ=добавить(new THREE.BoxGeometry(3,.25,4),камень,o.x,-.12,o.z+13);
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;
+    добавить(new THREE.SphereGeometry(.25,10,8),светящийся(0xffd782,1.4),o.x+Math.cos(a)*11,-12,o.z+Math.sin(a)*11);
+    const l=new THREE.PointLight(0xffd69c,12,25);l.position.set(o.x+Math.cos(a)*9,-12,o.z+Math.sin(a)*9);world.add(l);
   }
-  золото = []; несуЗолота = 0; отданоТут = 0;
-  for (let i = 0; i < 14; i++) {                    // 🪙 монеты, которые липнут
-    const a = rnd(0,6.3), r = rnd(13, o.r-4);
-    const м2 = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 16),
-      new THREE.MeshStandardMaterial({ color:0xffd24a, roughness:0.2, metalness:0.95 }));
-    м2.position.set(o.x + Math.cos(a)*r, 0.5, o.z + Math.sin(a)*r);
-    м2.rotation.x = Math.PI/2; м2.castShadow = true; world.add(м2);
-    золото.push({ m:м2, x:м2.position.x, z:м2.position.z, взята:false });
+  // Ящик для добровольного подарка: действие рядом с ним помогает отпустить жадность.
+  добавить(new THREE.BoxGeometry(2.4,1.2,1.8),деревоМат,o.x-5,ДНО_ЖАДНОСТИ+.6,o.z);
+  const знак=значокОбразца('🎁');знак.position.set(o.x-5,ДНО_ЖАДНОСТИ+2.5,o.z);world.add(знак);
+  for(let i=0;i<9;i++){
+    const x=o.x-2+(i%3)*3.2,z=o.z-5+Math.floor(i/3)*3.1;
+    const m=добавить(new THREE.OctahedronGeometry(.32,0),светящийся(0xffcf56,.9),x,ДНО_ЖАДНОСТИ+.45,z);
+    m.scale.y=1.45;
+    золото.push({m,x:m.position.x,z:m.position.z,взята:false,подарен:false,падает:false,vy:0});
   }
-  поставитьСферу('zhadn', o.x, o.z - 16);
+  поставитьСферу('zhadn',o.x,o.z+18);
 }
-function обновитьПропасть(dt) {
-  if (островТут !== 'zhadn' || !player) return;
-  for (const з of золото) {
-    if (з.взята) continue;
-    з.m.rotation.z += dt*2;
-    if (Math.hypot(з.x-player.x, з.z-player.z) > 1.8) continue;
-    з.взята = true; з.m.visible = false; несуЗолота++;
-    рюкзак.push({ em:'🪙', имя:'Золотая монета', можноБросить:true });
-    Snd.искра(); bigMsg('🪙 +1 · несёшь ' + несуЗолота, 1.2, '#ffd24a');
-    if (несуЗолота === 3) пульс('жадность', true);
+function пересчитатьКристаллы(){несуЗолота=рюкзак.filter(it=>it.кристаллЖадности).length;}
+function отпуститьЖадность(it){
+  if(it.кристаллЖадности)it.кристаллЖадности.подарен=true;
+  отданоТут++;пересчитатьКристаллы();
+  if(!сферы.zhadn.открыта){
+    открытьСферу('zhadn');настроение.сила=0;градусы.zhadn=0;
+    $('task').textContent='🎁 Ты поделился! Поднимись по лестнице и забери сферу у выхода.';
+    say('🤖 ПУЛЬС: Ты поделился по своей воле — объятия жадности ослабли. Забери сферу наверху, и путь домой открыт!',8);
   }
-  настроение.вид = 'zhadn';
-  настроение.сила = clamp(несуЗолота/8, 0, 1);        // тяжелеешь от жадности
-  if (несуЗолота >= 3 && !сферы.zhadn.открыта && отданоТут >= 1) {
-    открытьСферу('zhadn');
-    say('🤖 ПУЛЬС: Видишь? Стало легче ровно тогда, когда ты отдал.', 8);
+}
+function наДноЖадности(возврат=false){
+  const o=ОСТРОВА.zhadn;лестницаЖадности=null;
+  player.x=o.x;player.z=o.z+5;player.y=ДНО_ЖАДНОСТИ;player.vy=0;player.наЗемле=true;player.скор=0;
+  текущийМост=null;мостКд=2;потеряноНаЛестнице=0;
+  yaw=Math.PI;камера(0,true);нарисоватьГероя(0);
+  if(возврат){
+    bigMsg('🌀 ЖАДНОСТЬ ВЕРНУЛА ТЕБЯ В ПРОПАСТЬ',2.8,'#ffd24a');
+    say('🤖 ПУЛЬС: Крепки объятия жадности! Убежать домой не получилось. Поделись кристаллом у ящика 🎁 или положи вещь из рюкзака. Затем забери сферу.',10);
   }
+}
+function действиеПропасти(){
+  if(островТут!=='zhadn'||эфир)return false;
+  const o=ОСТРОВА.zhadn;
+  if(лестницаЖадности)return true;
+  if(Math.hypot(player.x-o.x,player.z-o.z-11)<3&&player.y<1){
+    лестницаЖадности={снизу:player.y<-2};потеряноНаЛестнице=0;
+    player.x=o.x;player.z=o.z+10.7;player.vy=0;player.наЗемле=false;
+    say(лестницаЖадности.снизу?'🪜 Поднимаешься! Если набрать много кристаллов, они начнут выпадать.':'🪜 Спускаешься к кристаллам.',4);return true;
+  }
+  if(player.y<ДНО_ЖАДНОСТИ+2&&Math.hypot(player.x-o.x+5,player.z-o.z)<3){
+    const i=рюкзак.findIndex(it=>it.кристаллЖадности);
+    if(i<0){say('🎁 Сюда можно положить кристалл для друзей. Подойди к кристаллику и нажми ✋.',5);return true;}
+    const it=рюкзак[i];if(it===вРуках)взятьВРуки(null);рюкзак.splice(i,1);отпуститьЖадность(it);Snd.искра();return true;
+  }
+  const к=золото.find(к=>!к.взята&&!к.подарен&&!к.падает&&Math.hypot(player.x-к.x,player.z-к.z)<1.8&&Math.abs(player.y-ДНО_ЖАДНОСТИ)<2);
+  if(!к)return false;
+  к.взята=true;к.m.visible=false;
+  рюкзак.push({em:'💎',имя:'Маленький кристалл',можноБросить:true,кристаллЖадности:к});пересчитатьКристаллы();
+  bigMsg('💎 Кристаллов: '+несуЗолота,1.5,'#ffd24a');Snd.искра();
+  $('task').textContent='💎 Кристаллы у тебя. Ящик 🎁 — поделиться, лестница 🪜 — подняться. Нажимай ✋ рядом.';
+  return true;
+}
+function двигатьПоЛестнице(dt){
+  if(!лестницаЖадности)return false;
+  const o=ОСТРОВА.zhadn,вверх=лестницаЖадности.снизу;
+  player.y+=dt*(вверх?3.6:-4);player.скор=3;player.h=0;player.vy=0;
+  if(вверх&&несуЗолота>2&&потеряноНаЛестнице<2&&player.y>ДНО_ЖАДНОСТИ+6*(потеряноНаЛестнице+1)){
+    const i=рюкзак.findIndex(it=>it.кристаллЖадности),it=рюкзак[i],к=it.кристаллЖадности;
+    if(it===вРуках)взятьВРуки(null);рюкзак.splice(i,1);пересчитатьКристаллы();потеряноНаЛестнице++;
+    к.взята=false;к.падает=true;к.vy=0;к.x=o.x+(потеряноНаЛестнице%2?1.8:-1.8);к.z=o.z+8;
+    к.m.position.set(к.x,player.y+1,к.z);к.m.visible=true;
+    bigMsg('💎 Кристаллик выскользнул и падает вниз!',2,'#ffd24a');
+  }
+  if(вверх&&player.y>=.2){
+    player.y=0;player.x=o.x;player.z=o.z+15.3;player.наЗемле=true;player.скор=0;лестницаЖадности=null;
+    say(сферы.zhadn.открыта?'🔮 Подойди к сфере у выхода.':'🤖 ПУЛЬС: Ты поднялся, но жадность ещё с тобой. Поделись вещью из рюкзака, чтобы открыть сферу.',6);
+  }else if(!вверх&&player.y<=ДНО_ЖАДНОСТИ){
+    player.y=ДНО_ЖАДНОСТИ;player.z=o.z+8;player.наЗемле=true;player.скор=0;лестницаЖадности=null;
+  }
+  нарисоватьГероя(dt);return true;
+}
+function обновитьПропасть(dt){
+  if(островТут!=='zhadn'||эфир||$('map').classList.contains('show'))return;
+  for(const к of золото){
+    if(к.взята||к.подарен)continue;
+    к.m.rotation.y+=dt*1.5;
+    if(к.падает){к.vy-=19*dt;к.m.position.y+=к.vy*dt;if(к.m.position.y<=ДНО_ЖАДНОСТИ+.45){к.m.position.y=ДНО_ЖАДНОСТИ+.45;к.падает=false;}}
+  }
+  пересчитатьКристаллы();настроение.вид='zhadn';
+  настроение.сила=сферы.zhadn.открыта?0:clamp(.3+несуЗолота/9,0,1);
+  градусы.zhadn=настроение.сила;рисоватьТермометр();
 }
 
 /* ═══════ 😑 СКУЧНАЯ ПОЛЯНА (мир Марка) ═══════
@@ -2765,6 +2818,7 @@ const А_ВДРУГ = [
 let камниТревоги = [], сижуT = 0, тревогаСила = 1, гораГотова = false;
 /* ⛰ единственное место, где у планеты есть ВЫСОТА: склон горы */
 function уровеньЗемли(x, z) {
+  if(островТут==='zhadn'&&Math.hypot(x-ОСТРОВА.zhadn.x,z-ОСТРОВА.zhadn.z)<РАДИУС_ЯМЫ)return ДНО_ЖАДНОСТИ;
   if (островТут==='vostorg') {
     const o=ОСТРОВА.vostorg;
     return Math.max(...вершиныВосторга.map(х=>высотаХолма(х,Math.hypot(x-o.x-х.x,z-o.z-х.z))));
@@ -4493,7 +4547,7 @@ const СПРАВОЧНИК = [
   { к:['мост','домой','вернуться'], о:'🌉 Мосты длинные — соседний остров даже не виден. Но из Пустыни лени, Леса обиды, Зеркал зазнайства, Пропасти жадности, Вулкана злобы, Пещеры стыда, Горы тревожности и Сада зависти моста НЕТ вовсе: пока не справишься, тебя туда просто не пустит.' },
   { к:['любв','море любви','клубник','мальчик','девочк'], о:'💗 МОРЕ ЛЮБВИ — тёплая вода и закат. Сюда попадают не за провинность, а по-хорошему. От берега прямо по волнам идёт дорожка из трёх сердец: у каждого надо СКАЗАТЬ ВСЛУХ, кого ты любишь, — и оно загорится. В плохом признаться трудно (это Пещера стыда), а в хорошем почему-то ещё труднее. Зажжёшь все три — в конце дорожки арка с подарком: выбрать, за кого играть дальше по всей планете, за мальчика или за девочку. Передумаешь — возвращайся к арке. Образец отсюда — любовная клубника.' },
   { к:['зеркал','зазнай'], о:'🪞 ЗЕРКАЛА ЗАЗНАЙСТВА: чем дольше любуешься собой, тем ярче отражение и тем бледнее ты сам. Лечится тем, что отвернёшься от каждого зеркала.' },
-  { к:['жадност','пропаст','бездн'], о:'🕳 ПРОПАСТЬ ЖАДНОСТИ: золото само липнет к рукам, и чем больше несёшь, тем тяжелее шаг. Выход один — открыть рюкзак и положить вещь на землю.' },
+  { к:['жадност','пропаст','бездн'], о:'🕳 ПРОПАСТЬ ЖАДНОСТИ: на дне лежат маленькие кристаллы. Бери их кнопкой ✋. Поделись у ящика 🎁 или положи вещь из рюкзака. У лестницы нажми ✋, поднимись и забери сферу. Из полной охапки кристаллы могут выпасть!' },
   { к:['вулкан','злоб','метеорит','лава'], о:'🌋 ВУЛКАН ЗЛОБЫ: надо сосчитать до десяти — тронуть десять камней ПО ПОРЯДКУ. Собьёшься — вулкан злится: разливается лава и летят метеориты. Считай спокойно, с единицы.' },
   { к:['друз','друг','кто играет'], о:'💬 Друзья пишут тебе сами, когда в чужом мире тяжело. Если у мира есть мост — подскажут бежать к нему, если моста нет — просто дождутся. Осторожно: Морф умеет писать их голосом.' },
   { к:['достиж','награ'], о:'🏆 Достижений теперь восемнадцать: от «Крепких нервов» до «На кого равняться» — это про то, чтобы ответить уверенно всем завистным розам в Саду зависти.' },
@@ -4882,6 +4936,8 @@ function урон(txt) {
 /* 🚚 перенос на остров */
 function наОстров(id, эмоция, поМосту=false) {
   const сНапарником=поМосту && id==='strah' && островТут==='garmony' && приключение?.id==='страх' && приключение.этап==='мост';
+  if(островТут==='zhadn'&&id!=='zhadn'&&!сферы.zhadn.взята){наДноЖадности(true);return;}
+  лестницаЖадности=null;
   закрытьОтветВстречи();
   const бегутДомой=поМосту && id==='garmony' && островТут==='strah' && приключение?.этап==='обратно';
   if(!сНапарником&&!бегутДомой)убратьПриключение();
@@ -4920,6 +4976,7 @@ function наОстров(id, эмоция, поМосту=false) {
   scene.fog.near = воздух.near; scene.fog.far = воздух.far;
   настроение.вид = эмоция || (id === 'strah' ? 'strah' : id === 'zloba' ? 'zloba' : null);
   настроение.сила = эмоция ? 1 : (id === 'garmony' ? 0 : настроение.сила);
+  if(id==='zhadn'&&эмоция==='zhadn')наДноЖадности();
   камера(0, true); обновитьHud();
   перенестиЗвездопад();                                // 🌠 звёзды идут за тобой
   Snd.музыка(МУЗЫКА_ОСТРОВА[id] || 'calm');            // 🔊 у каждого мира своя музыка
@@ -4966,7 +5023,7 @@ function телепортЗа(эмоция) {
 }
 /* правила: копим эмоцию, переполнилась — телепорт */
 function обновитьПравила(dt) {
-  if (state !== 'play') return;
+  if (state !== 'play' || эфир || $('map').classList.contains('show') || островТут==='zhadn') return;
   if(приключение?.id==='страх'){стоюT=0;return;}
   /* 🌡 сводим текущее чувство в общий термометр и смотрим, не переполнилось ли */
   if (настроение.вид && градусы[настроение.вид] !== undefined)
@@ -5025,7 +5082,7 @@ function мостДомой(м) {
 function взять() {
   if (state !== 'play') return;
   if (действиеПриключения() || ответитьГостю() || набратьВоду()) return;
-  if (действиеТихогоОстрова()) return;
+  if (действиеПропасти() || действиеТихогоОстрова()) return;
   if (островТут==='udiv' && раскрытьБутон()) return;
   if (уКомпьютера()) { открытьКомпьютер(); return; }            // 🖥 дома у компьютера
   if (пылесосВСарае && !пылесосВСарае.взят &&
@@ -5155,7 +5212,7 @@ function показатьРюкзак() {
       b.textContent = 'Положить на землю'; b.onclick = () => { if (it === вРуках) взятьВРуки(null);
         рюкзак.splice(i,1); показатьРюкзак();
         счёт.отдано++; if (счёт.отдано >= 3) открытьДост('shedr');
-        if (островТут === 'zhadn') { отданоТут++; несуЗолота = Math.max(0, несуЗолота-1); }
+        if (островТут === 'zhadn') отпуститьЖадность(it);
         bigMsg('🫳 отпустил', 1.2, '#a7f3d0'); }; d.appendChild(b); }
     box.appendChild(d);
   });
@@ -5166,6 +5223,7 @@ function показатьРюкзак() {
 const ГРАВ = 19;
 function скользитьПоСтенам(nx, nz, r) {
   for (const w of walls) {
+    if(островТут==='zhadn'&&player.y<-2)continue;
     const dx = w.x2-w.x1, dz = w.z2-w.z1, L2 = dx*dx + dz*dz || 1;
     let t = ((nx-w.x1)*dx + (nz-w.z1)*dz) / L2; t = clamp(t, 0, 1);
     const cx = w.x1 + dx*t, cz = w.z1 + dz*t;
@@ -5175,6 +5233,8 @@ function скользитьПоСтенам(nx, nz, r) {
   return { x:nx, z:nz };
 }
 function двигать(dt) {
+  if($('map').classList.contains('show'))return;
+  if(островТут==='zhadn'&&двигатьПоЛестнице(dt))return;
   if(приключение?.этап==='вКлетке'||приключение?.этап==='танец'){
     нарисоватьГероя(dt);return;
   }
@@ -5192,6 +5252,7 @@ function двигать(dt) {
   player.скор += (макс - player.скор) * Math.min(1, dt*8);
   if (l) player.h = Math.atan2(wx, wz);
   let nx = player.x + wx*player.скор*dt, nz = player.z + wz*player.скор*dt;
+  if(островТут==='zhadn'&&player.y<-2){const o=ОСТРОВА.zhadn,d=Math.hypot(nx-o.x,nz-o.z);if(d>10.8){nx=o.x+(nx-o.x)*10.8/d;nz=o.z+(nz-o.z)*10.8/d;}}
   const r2 = скользитьПоСтенам(nx, nz, 0.45); nx = r2.x; nz = r2.z;
   // 🌉 мосты и края островов
   const o = ОСТРОВА[островТут];
@@ -5206,6 +5267,7 @@ function двигать(dt) {
     /* 🚫 ПРАВИЛО МАРКА: из этих миров на мост даже НЕ ЗАЙТИ, пока не справился.
        «Справился» = сфера этого мира у тебя. Иначе планета отталкивает назад. */
     const заперт = БЕЗ_МОСТА.has(островТут) && !(сферы[островТут] && сферы[островТут].взята);
+    if(заперт&&островТут==='zhadn'){наДноЖадности(true);return;}
     const м = (мостКд > 0 || заперт) ? null : текущийМост || мосты.find(m2 => {
       if (!((m2.от === островТут || m2.до === островТут) && m2.открыт)) return false;
       if (Math.abs((nx-m2.x0)*(-m2.uz) + (nz-m2.z0)*(m2.ux)) >= 2.6) return false;
@@ -5557,7 +5619,7 @@ function loop(now) {
     p.setZ(i, Math.sin(x*0.06 + time*1.1)*0.5 + Math.cos(y*0.05 + time*0.8)*0.4);
   }
   p.needsUpdate = true; мореГео.computeVertexNormals();
-  if (state === 'play') {
+  if (state === 'play' && !$('map').classList.contains('show')) {
     if (!эфир) двигать(dt); обновитьСтрахи(dt); обновитьВулкан(dt); обновитьБолото(dt); обновитьПустыню(dt);
     обновитьПляжИРеку(dt); обновитьПропасть(dt); обновитьПоляну(dt); обновитьЛес(dt);
     обновитьЗеркала(dt); обновитьПещеру(dt); обновитьГору(dt); обновитьМоре(dt); обновитьСад(dt); обновитьОбразцы(dt);
@@ -6087,22 +6149,15 @@ const БЕЗ_МОСТА = new Set(['zhadn', 'zloba', 'len', 'obida', 'zaznai', '
 function показатьКарту() {
   const box = $('mapGrid'); box.innerHTML = '';
   КАРТА_ПОРЯДОК.forEach(([id, имя]) => {
-    const скоро = СКОРО.has(id);
-    /* 🔭 ТЕЛЕСКОП (желание Марка): показывает даже те миры, где ты ещё не был */
-    const открыт = открытыеМиры.has(id) || скоро || естьЖ('teleskop');
-    const d = document.createElement('div');
-    d.className = 'mapIt' + (id === островТут ? ' here' : '') + (открыт ? '' : ' lock');
-    const cv = document.createElement('canvas'); cv.width = 150; cv.height = 110;
-    const g2 = cv.getContext('2d');
-    if (открыт) (ЗНАЧКИ[id] || ЗНАЧКИ.garmony)(g2, 150, 110);
-    else { зал(g2, 150, 110, '#2a3142', '#12161f');      // ❓ мир ещё не открыт
-      g2.fillStyle = '#5b6676'; g2.font = 'bold 46px system-ui'; g2.textAlign = 'center';
-      g2.fillText('?', 75, 72); }
-    d.appendChild(cv);
-    const n = document.createElement('div'); n.className = 'nm';
-    n.textContent = скоро ? (имя + ' · скоро')
-      : открыт ? (имя + (id === островТут ? ' · ТЫ' : '')) : '??? не открыт';
-    d.appendChild(n);
+    const o=ОСТРОВА[id],d=document.createElement('button');
+    d.type='button';d.className='mapIt'+(id===островТут?' here':'');d.dataset.island=id;
+    d.style.left=(9+(o.x+245)/497*82)+'%';d.style.top=(10+(o.z+240)/464*78)+'%';
+    d.setAttribute('aria-label','Посмотреть: '+имя);d.title='Посмотреть остров';
+    const cv=document.createElement('canvas');cv.width=180;cv.height=180;
+    const g2=cv.getContext('2d');g2.save();g2.beginPath();g2.arc(90,90,90,0,Math.PI*2);g2.clip();
+    (ЗНАЧКИ[id]||ЗНАЧКИ.garmony)(g2,180,180);g2.restore();d.appendChild(cv);
+    const n=document.createElement('span');n.className='nm';n.textContent=имя+(id===островТут?' · ТЫ':'');d.appendChild(n);
+    d.onclick=()=>{$('map').classList.remove('show');показатьЭфир({остров:id,обзор:true,изКарты:true});};
     box.appendChild(d);
   });
   $('mapWho').textContent = 'Ты сейчас — ' + ОСТРОВА[островТут].имя;
@@ -6117,6 +6172,8 @@ function показатьКарту() {
       : ' · 📱 Пока никого из друзей на планете нет';
   }
   $('map').classList.add('show');
+  стик.x=стик.y=0;for(const k in keys)keys[k]=false;
+  requestAnimationFrame(()=>{const v=$('mapViewport'),b=box.querySelector('.here');if(b)v.scrollLeft=Math.max(0,b.offsetLeft-v.clientWidth/2);});
 }
 $('mapBtn').onclick = показатьКарту;
 $('mapClose').onclick = () => $('map').classList.remove('show');
@@ -6421,11 +6478,13 @@ function камераЭфира(dt) {
 }
 function закрытьЭфир() {
   if (!эфир) return;
+  const изКарты=эфир.изКарты;
   const б = эфир.было, o = ОСТРОВА[островТут];
   scene.background.setHex(б.фон); scene.fog.color.setHex(б.туман);
   небоЦвета(o.небо, o.небоВерх || 0x2f7fd0);
   scene.fog.near = б.near; scene.fog.far = б.far;
   эфир = null; $('эфир').classList.remove('show'); document.body.classList.remove('эфирВкл');
+  if(изКарты)показатьКарту();
   камера(0, true);
 }
 $('компClose').onclick = () => $('комп').classList.remove('show');
@@ -6554,8 +6613,8 @@ window.__dbg = {
     метеоритов:метеориты.filter(m => m.живёт > 0).length }; },
   think(ok){ if (!морф || !морф.ждёт) return null; ответМысль(!!ok); return правдТут; },
   drop(){ const i = рюкзак.findIndex(x => x.можноБросить !== false); if (i < 0) return null;
-    if (рюкзак[i] === вРуках) взятьВРуки(null); рюкзак.splice(i,1);
-    if (островТут === 'zhadn') { отданоТут++; несуЗолота = Math.max(0, несуЗолота-1); }
+    const it=рюкзак[i];if (it === вРуках) взятьВРуки(null); рюкзак.splice(i,1);
+    if (островТут === 'zhadn') отпуститьЖадность(it);
     return рюкзак.length; },
   openSphere(id){ открытьСферу(id); return сферы[id] ? сферы[id].открыта : null; },
   toSphere(id){ const с = сферы[id]; if (!с) return null; player.x = с.x + 1.2; player.z = с.z + 1.2; return id; },
